@@ -1,0 +1,467 @@
+/* ======================================================================
+   DESIGN TOKENS
+   Tema: panel monitoring industri tambang — graphite gelap, aksen amber
+   (warna safety tambang) untuk elemen utama, cyan untuk data air.
+   ====================================================================== */
+:root {
+  --bg: #14181c;
+  --bg-panel: #1b2126;
+  --bg-panel-raised: #212830;
+  --border: #2c343b;
+  --border-soft: #232a30;
+  --text: #eae7e0;
+  --text-dim: #9aa3ab;
+  --text-faint: #6b747c;
+
+  --amber: #d98e3d;
+  --amber-soft: rgba(217, 142, 61, 0.14);
+  --cyan: #5fb8c4;
+  --cyan-soft: rgba(95, 184, 196, 0.14);
+  --red: #d9695f;
+  --green: #7bb88a;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--cyan); }
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+}
+
+/* ======================================================================
+   HEADER
+   ====================================================================== */
+.site-header {
+  position: relative;
+  background: linear-gradient(180deg, #1a2024 0%, #14181c 100%);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.header-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 24px 34px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 16px; }
+
+.brand-mark {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  padding: 5px 9px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.brand-text h1 {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.model-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.pill-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(123,184,138,0.18);
+}
+
+.contour-bg {
+  position: absolute;
+  bottom: -10px; left: 0;
+  width: 100%; height: 60px;
+  opacity: 0.35;
+}
+.contour-bg path {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+/* ======================================================================
+   LAYOUT
+   ====================================================================== */
+.layout {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+}
+
+.section-desc {
+  color: var(--text-dim);
+  font-size: 13.5px;
+  margin: 0 0 18px;
+  max-width: 64ch;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ======================================================================
+   SECTION 1 — Metrics
+   ====================================================================== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.metric-card {
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--cyan);
+}
+
+.metric-unit {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* ======================================================================
+   SECTION 2 — Chart
+   ====================================================================== */
+.range-toggle {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.range-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.range-btn.active {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.chart-wrap {
+  margin-top: 16px;
+  height: 320px;
+}
+
+/* ======================================================================
+   TWO COLUMN — Predict form + Gauge
+   ====================================================================== */
+.two-col {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 22px;
+  align-items: stretch;
+}
+
+.predict-form { margin-top: 4px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.form-grid label.full-width { grid-column: 1 / -1; }
+
+.form-grid input {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 9px 11px;
+  color: var(--text);
+}
+
+.form-grid input:focus { border-color: var(--amber); }
+
+.btn-predict {
+  margin-top: 20px;
+  width: 100%;
+  background: var(--amber);
+  color: #1a1206;
+  border: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 13px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.btn-predict:hover { filter: brightness(1.08); }
+.btn-predict:active { filter: brightness(0.95); }
+.btn-predict:disabled { opacity: 0.6; cursor: progress; }
+
+.form-error {
+  color: var(--red);
+  font-size: 13px;
+  margin: 12px 0 0;
+  min-height: 1em;
+}
+
+/* ======================================================================
+   GAUGE — signature element
+   ====================================================================== */
+.gauge-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.gauge-empty p {
+  color: var(--text-faint);
+  font-size: 13.5px;
+  max-width: 28ch;
+  margin: 0 auto;
+}
+
+.gauge-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.gauge-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gauge-visual {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+.gauge-dial { width: 100%; height: 100%; transform: rotate(-90deg); }
+
+.gauge-track {
+  fill: none;
+  stroke: var(--border-soft);
+  stroke-width: 10;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 540.35;
+  stroke-dashoffset: 540.35;
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gauge-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-number span:first-child {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.gauge-unit {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.gauge-delta {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+}
+
+.gauge-delta.up { color: var(--red); border-color: rgba(217,105,95,0.35); }
+.gauge-delta.down { color: var(--cyan); border-color: rgba(95,184,196,0.35); }
+.gauge-delta.flat { color: var(--text-dim); }
+
+/* ======================================================================
+   SECTION 4 — Feature importance
+   ====================================================================== */
+.importance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.importance-row {
+  display: grid;
+  grid-template-columns: 190px 1fr 60px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.importance-row .fitur-name { color: var(--text-dim); }
+
+.importance-bar-track {
+  height: 8px;
+  background: var(--bg-panel-raised);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.importance-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber), var(--cyan));
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.6s ease;
+}
+
+.importance-row .pct {
+  font-family: var(--font-mono);
+  text-align: right;
+  color: var(--text-faint);
+}
+
+/* ======================================================================
+   FOOTER
+   ====================================================================== */
+.site-footer {
+  text-align: center;
+  padding: 26px 24px 40px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+
+/* ======================================================================
+   RESPONSIVE
+   ====================================================================== */
+@media (max-width: 860px) {
+  .two-col { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; }
+  .importance-row { grid-template-columns: 120px 1fr 48px; font-size: 12px; }
+}
