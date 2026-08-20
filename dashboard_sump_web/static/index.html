@@ -40,7 +40,7 @@
        ================================================================ -->
   <section class="panel metrics-panel" aria-labelledby="metrics-title">
     <h2 id="metrics-title">1 · Ringkasan Performa Model</h2>
-    <p class="section-desc">Metrik hasil evaluasi model pada data uji (data historis yang tidak dipakai saat training).</p>
+    <p class="section-desc">Metrik hasil evaluasi model terhadap data historis (prediksi elevasi H+1 dibandingkan nilai aktualnya).</p>
     <div class="metrics-grid" id="metrics-grid">
       <div class="metric-card">
         <span class="metric-label">RMSE</span>
@@ -101,28 +101,83 @@
           <label>Durasi Hujan (jam)
             <input type="number" step="0.1" name="durasi_hujan" required value="2.5" />
           </label>
-          <label>Akumulasi 3 Hari (mm)
-            <input type="number" step="0.1" name="akumulasi_3" required value="30" />
-          </label>
-          <label>Akumulasi 5 Hari (mm)
-            <input type="number" step="0.1" name="akumulasi_5" required value="50" />
-          </label>
-          <label>Akumulasi 7 Hari (mm)
-            <input type="number" step="0.1" name="akumulasi_7" required value="70" />
-          </label>
-          <label>Debit Air Limpasan (m³/detik)
-            <input type="number" step="0.01" name="debit_limpasan" required value="9.5" />
-          </label>
           <label>Elevasi Kemarin (m)
             <input type="number" step="0.01" name="elevasi_kemarin" required value="-15.6" />
           </label>
           <label>Elevasi Hari Ini (m)
             <input type="number" step="0.01" name="elevasi_hari_ini" required value="-15.3" />
           </label>
-          <label class="full-width">Volume Sump (m³)
-            <input type="number" step="0.01" name="volume_sump" required value="341845.32" />
-          </label>
         </div>
+
+        <!-- ---- PARAMETER SENSITIVITAS (baru) ---- -->
+        <div class="sensitivity-block">
+          <p class="sensitivity-title">Parameter Sensitivitas Catchment</p>
+          <p class="sensitivity-desc">
+            Ubah nilai ini untuk melihat bagaimana karakteristik area tangkapan air
+            memengaruhi debit limpasan &amp; hasil prediksi.
+          </p>
+          <div class="form-grid">
+            <label>
+              Koefisien Limpasan — C
+              <span class="range-value" id="c-value-label">0.60</span>
+              <input type="range" min="0" max="1" step="0.05" name="koefisien_limpasan" id="c-slider" value="0.6" />
+            </label>
+            <label>Luas Catchment Area (km²)
+              <input type="number" step="0.01" min="0" name="luas_catchment_area" required value="3.66" />
+            </label>
+          </div>
+        </div>
+
+        <!-- ---- NILAI TERHITUNG OTOMATIS (baru, live preview) ---- -->
+        <div class="computed-block" id="computed-block">
+          <div class="computed-item">
+            <span class="computed-label">Debit Air Limpasan (dihitung otomatis)</span>
+            <span class="computed-value" id="preview-debit">– m³/detik</span>
+          </div>
+          <div class="computed-item">
+            <span class="computed-label">Volume Sump (dihitung otomatis)</span>
+            <span class="computed-value" id="preview-volume">– m³</span>
+          </div>
+        </div>
+
+        <!-- ---- AKUMULASI HUJAN (baru: dihitung otomatis dari data historis) ---- -->
+        <details class="advanced-block" open>
+          <summary>Akumulasi Hujan 3/5/7 Hari — dihitung otomatis</summary>
+          <p class="advanced-desc">
+            Dihitung otomatis: <strong>Curah Hujan Hari Ini + curah hujan hari-hari sebelumnya
+            dari data historis</strong> (bukan cuma taksiran). Pengaruh fitur ini ke hasil
+            prediksi tetap kecil (gabungan &lt;1.5% — lihat bagian 4), tapi sekarang nilainya
+            akurat, bukan kira-kira. Kosongkan untuk pakai hitungan otomatis, atau isi manual
+            kalau Anda punya data yang lebih tepat.
+          </p>
+          <div class="computed-block" id="akumulasi-preview-block">
+            <div class="computed-item">
+              <span class="computed-label">Akumulasi 3 Hari</span>
+              <span class="computed-value" id="preview-akum-3">– mm</span>
+            </div>
+            <div class="computed-item">
+              <span class="computed-label">Akumulasi 5 Hari</span>
+              <span class="computed-value" id="preview-akum-5">– mm</span>
+            </div>
+            <div class="computed-item">
+              <span class="computed-label">Akumulasi 7 Hari</span>
+              <span class="computed-value" id="preview-akum-7">– mm</span>
+            </div>
+          </div>
+          <p class="advanced-desc" id="akum-context-note" style="margin-top:10px;"></p>
+          <div class="form-grid" style="margin-top:10px;">
+            <label>Timpa manual: Akumulasi 3 Hari (mm)
+              <input type="number" step="0.1" name="akumulasi_3" id="akum_3" placeholder="Kosongkan = otomatis" />
+            </label>
+            <label>Timpa manual: Akumulasi 5 Hari (mm)
+              <input type="number" step="0.1" name="akumulasi_5" id="akum_5" placeholder="Kosongkan = otomatis" />
+            </label>
+            <label>Timpa manual: Akumulasi 7 Hari (mm)
+              <input type="number" step="0.1" name="akumulasi_7" id="akum_7" placeholder="Kosongkan = otomatis" />
+            </label>
+          </div>
+        </details>
+
         <button type="submit" class="btn-predict">Prediksi Elevasi Besok</button>
       </form>
 
@@ -130,7 +185,7 @@
     </section>
 
     <!-- ==============================================================
-         Signature element — gauge hasil prediksi
+         Signature element — gauge hasil prediksi + status
          ============================================================== -->
     <section class="panel gauge-panel" aria-labelledby="gauge-title">
       <h2 id="gauge-title" class="sr-only">Hasil Prediksi</h2>
@@ -150,6 +205,22 @@
           </div>
         </div>
         <div class="gauge-delta" id="gauge-delta"></div>
+
+        <!-- ---- STATUS BADGE (baru) ---- -->
+        <div class="status-badge" id="status-badge"></div>
+
+        <details class="thresholds-block">
+          <summary>Atur ambang batas status</summary>
+          <div class="form-grid">
+            <label>Batas Waspada (m)
+              <input type="number" step="0.1" id="batas-waspada" value="-15">
+            </label>
+            <label>Batas Kritis (m)
+              <input type="number" step="0.1" id="batas-kritis" value="-14">
+            </label>
+          </div>
+          <p class="advanced-desc">Default kritis di -14 m sesuai batas yang ditentukan. Sesuaikan kalau ada SOP berbeda di lapangan.</p>
+        </details>
       </div>
     </section>
   </div>

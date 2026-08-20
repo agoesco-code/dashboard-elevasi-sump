@@ -18,7 +18,9 @@
   --cyan: #5fb8c4;
   --cyan-soft: rgba(95, 184, 196, 0.14);
   --red: #d9695f;
+  --red-soft: rgba(217, 105, 95, 0.14);
   --green: #7bb88a;
+  --green-soft: rgba(123, 184, 138, 0.14);
 
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -275,6 +277,7 @@ a { color: var(--cyan); }
   gap: 6px;
   font-size: 12.5px;
   color: var(--text-dim);
+  position: relative;
 }
 
 .form-grid label.full-width { grid-column: 1 / -1; }
@@ -290,6 +293,30 @@ a { color: var(--cyan); }
 }
 
 .form-grid input:focus { border-color: var(--amber); }
+
+.form-grid input::placeholder {
+  color: var(--text-faint);
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* range slider (Koefisien Limpasan) */
+.form-grid input[type="range"] {
+  padding: 0;
+  background: transparent;
+  border: none;
+  accent-color: var(--amber);
+  height: 20px;
+}
+
+.range-value {
+  position: absolute;
+  top: 0; right: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber);
+}
 
 .btn-predict {
   margin-top: 20px;
@@ -318,6 +345,92 @@ a { color: var(--cyan); }
 }
 
 /* ======================================================================
+   SENSITIVITAS & NILAI TERHITUNG (baru)
+   ====================================================================== */
+.sensitivity-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.sensitivity-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sensitivity-desc {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  max-width: 60ch;
+}
+
+.computed-block {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.computed-item {
+  background: var(--cyan-soft);
+  border: 1px solid rgba(95, 184, 196, 0.3);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.computed-label {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.computed-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cyan);
+}
+
+/* ======================================================================
+   BLOK LANJUTAN / COLLAPSIBLE (baru)
+   ====================================================================== */
+.advanced-block,
+.thresholds-block {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.advanced-block summary,
+.thresholds-block summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.advanced-block summary:hover,
+.thresholds-block summary:hover {
+  color: var(--amber);
+}
+
+.advanced-desc {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.advanced-desc strong { color: var(--text-dim); }
+
+/* ======================================================================
    GAUGE — signature element
    ====================================================================== */
 .gauge-panel {
@@ -339,6 +452,7 @@ a { color: var(--cyan); }
   flex-direction: column;
   align-items: center;
   gap: 14px;
+  width: 100%;
 }
 
 .gauge-label {
@@ -406,6 +520,52 @@ a { color: var(--cyan); }
 .gauge-delta.flat { color: var(--text-dim); }
 
 /* ======================================================================
+   STATUS BADGE — Aman / Waspada / Kritis (baru)
+   ====================================================================== */
+.status-badge {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.status-badge.status-aman {
+  background: var(--green-soft);
+  color: var(--green);
+  border-color: rgba(123,184,138,0.35);
+}
+
+.status-badge.status-waspada {
+  background: var(--amber-soft);
+  color: var(--amber);
+  border-color: rgba(217,142,61,0.4);
+}
+
+.status-badge.status-kritis {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: rgba(217,105,95,0.4);
+  animation: pulse-kritis 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse-kritis {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217,105,95,0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(217,105,95,0); }
+}
+
+.thresholds-block {
+  width: 100%;
+  text-align: left;
+}
+
+.thresholds-block .form-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ======================================================================
    SECTION 4 — Feature importance
    ====================================================================== */
 .importance-list {
@@ -433,6 +593,7 @@ a { color: var(--cyan); }
 }
 
 .importance-bar-fill {
+  display: block;
   height: 100%;
   background: linear-gradient(90deg, var(--amber), var(--cyan));
   border-radius: 999px;
@@ -463,5 +624,6 @@ a { color: var(--cyan); }
   .two-col { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .form-grid { grid-template-columns: 1fr; }
+  .computed-block { grid-template-columns: 1fr; }
   .importance-row { grid-template-columns: 120px 1fr 48px; font-size: 12px; }
 }

@@ -1,11 +1,14 @@
 /* ========================================================================
    SCRIPT DASHBOARD
    File ini menghubungkan halaman (HTML) ke backend Flask (app.py) lewat
-   API. Dibagi jadi 4 bagian sesuai section di halaman:
+   API. Dibagi jadi beberapa bagian sesuai section di halaman:
      1. Ambil & tampilkan metrik performa model
      2. Ambil & tampilkan grafik historis (pakai Chart.js)
-     3. Kirim form prediksi ke backend, tampilkan hasil di gauge
-     4. Ambil & tampilkan feature importance
+     3. Live preview Debit Limpasan & Volume Sump (dihitung di JS, cermin
+        dari rumus backend, supaya user lihat perubahan instan saat mengubah
+        parameter sensitivitas -- tanpa perlu klik submit dulu)
+     4. Kirim form prediksi ke backend, tampilkan hasil di gauge + status
+     5. Ambil & tampilkan feature importance
    ======================================================================== */
 
 const API_BASE = ""; // kosong = pakai domain yang sama (Flask menyajikan frontend & API bersamaan)
@@ -46,8 +49,6 @@ async function loadHistoricalChart(days = 0) {
 
     const ctx = document.getElementById("historicalChart").getContext("2d");
 
-    // Kalau chart sudah pernah dibuat, cukup update datanya (lebih cepat
-    // & tidak "berkedip" dibanding membuat ulang dari nol)
     if (historicalChart) {
       historicalChart.data.labels = data.tanggal;
       historicalChart.data.datasets[0].data = data.elevasi;
@@ -123,7 +124,6 @@ async function loadHistoricalChart(days = 0) {
   }
 }
 
-// Tombol filter rentang waktu (90 hari / 180 hari / semua)
 document.querySelectorAll(".range-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".range-btn").forEach((b) => b.classList.remove("active"));
@@ -134,21 +134,113 @@ document.querySelectorAll(".range-btn").forEach((btn) => {
 });
 
 // ------------------------------------------------------------------------
-// BAGIAN 3: Form prediksi -> gauge hasil
+// BAGIAN 3: Live preview Debit Air Limpasan & Volume Sump
+// (rumus ini CERMIN dari backend app.py -- kalau backend diubah, ubah juga di sini)
+// ------------------------------------------------------------------------
+
+// Koefisien kurva Volume = f(Elevasi), hasil fit kuadratik dari data historis (R²=0.9998)
+const VOL_COEFFS = [3114.43399297, 158864.87494434, 2060859.59270043]; // [a, b, c] utk a*x^2+b*x+c
+
+// Curah hujan 6 hari terakhir dari data historis -- dipakai utk live-preview
+// akumulasi 3/5/7 hari (cermin dari hitung_akumulasi() di backend app.py).
+let curahHujan6HariTerakhir = [];
+
+async function loadAkumulasiContext() {
+  try {
+    const res = await fetch(`${API_BASE}/api/akumulasi-context`);
+    const data = await res.json();
+    curahHujan6HariTerakhir = data.curah_hujan_6_hari_terakhir;
+    document.getElementById("akum-context-note").textContent =
+      `Data historis terakhir: ${data.tanggal_terakhir}. "Hari Ini" diasumsikan tanggal setelah itu.`;
+    updateAkumulasiPreview();
+  } catch (err) {
+    console.error("loadAkumulasiContext error:", err);
+  }
+}
+
+function previewAkumulasi(curahHujanHariIni, nHari) {
+  const nHariSebelumnya = nHari > 1 ? curahHujan6HariTerakhir.slice(-(nHari - 1)) : [];
+  const jumlahSebelumnya = nHariSebelumnya.reduce((a, b) => a + b, 0);
+  return curahHujanHariIni + jumlahSebelumnya;
+}
+
+function updateAkumulasiPreview() {
+  const form = document.getElementById("predict-form");
+  const curah = parseFloat(form.curah_hujan.value) || 0;
+
+  document.getElementById("preview-akum-3").textContent = `${formatNumber(previewAkumulasi(curah, 3), 1)} mm`;
+  document.getElementById("preview-akum-5").textContent = `${formatNumber(previewAkumulasi(curah, 5), 1)} mm`;
+  document.getElementById("preview-akum-7").textContent = `${formatNumber(previewAkumulasi(curah, 7), 1)} mm`;
+}
+
+function previewVolumeSump(elevasi) {
+  const [a, b, c] = VOL_COEFFS;
+  return a * elevasi * elevasi + b * elevasi + c;
+}
+
+function previewDebitLimpasan(curahHujan, durasiHujan, koefC, luasA) {
+  if (!durasiHujan || durasiHujan <= 0) return 0;
+  const intensitas = curahHujan / durasiHujan; // mm/jam
+  return (koefC * intensitas * luasA) / 3.6;
+}
+
+function formatNumber(n, decimals = 2) {
+  return n.toLocaleString("id-ID", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function updateComputedPreview() {
+  const form = document.getElementById("predict-form");
+  const curah = parseFloat(form.curah_hujan.value) || 0;
+  const durasi = parseFloat(form.durasi_hujan.value) || 0;
+  const koefC = parseFloat(form.koefisien_limpasan.value) || 0;
+  const luasA = parseFloat(form.luas_catchment_area.value) || 0;
+  const elevasiHariIni = parseFloat(form.elevasi_hari_ini.value);
+
+  const debit = previewDebitLimpasan(curah, durasi, koefC, luasA);
+  document.getElementById("preview-debit").textContent = `${formatNumber(debit, 4)} m³/detik`;
+
+  if (!isNaN(elevasiHariIni)) {
+    const volume = previewVolumeSump(elevasiHariIni);
+    document.getElementById("preview-volume").textContent = `${formatNumber(volume, 0)} m³`;
+  }
+}
+
+// Slider Koefisien Limpasan (C) — update label angka + preview
+const cSlider = document.getElementById("c-slider");
+const cValueLabel = document.getElementById("c-value-label");
+cSlider.addEventListener("input", () => {
+  cValueLabel.textContent = parseFloat(cSlider.value).toFixed(2);
+  updateComputedPreview();
+});
+
+// Field-field lain yang memengaruhi preview
+["curah_hujan", "durasi_hujan", "luas_catchment_area", "elevasi_hari_ini"].forEach((name) => {
+  document.getElementsByName(name)[0].addEventListener("input", updateComputedPreview);
+});
+
+// Curah hujan hari ini juga memengaruhi preview akumulasi 3/5/7 hari
+document.getElementsByName("curah_hujan")[0].addEventListener("input", updateAkumulasiPreview);
+
+// ------------------------------------------------------------------------
+// BAGIAN 4: Form prediksi -> gauge hasil + status badge
 // ------------------------------------------------------------------------
 const GAUGE_CIRCUMFERENCE = 540.35; // 2 * PI * r(86), dihitung dari SVG di HTML
 
-function updateGauge(prediksi, deltaInput, elevasiHariIni) {
+const STATUS_LABEL = {
+  aman: "AMAN",
+  waspada: "WASPADA",
+  kritis: "KRITIS",
+};
+
+function updateGauge(prediksi, elevasiHariIni, status) {
   document.getElementById("gauge-empty").hidden = true;
   const resultEl = document.getElementById("gauge-result");
   resultEl.hidden = false;
 
   document.getElementById("gauge-value").textContent = prediksi.toFixed(3);
 
-  // Isi lingkaran gauge berdasarkan seberapa besar perubahan elevasi
-  // diprediksi (dibatasi 0-100% secara visual, bukan skala eksak)
   const deltaPrediksi = prediksi - elevasiHariIni;
-  const pct = Math.min(Math.abs(deltaPrediksi) / 2, 1); // asumsi 2m = perubahan besar
+  const pct = Math.min(Math.abs(deltaPrediksi) / 2, 1);
   const offset = GAUGE_CIRCUMFERENCE * (1 - pct);
   document.getElementById("gauge-fill-circle").style.strokeDashoffset = offset;
 
@@ -163,6 +255,17 @@ function updateGauge(prediksi, deltaInput, elevasiHariIni) {
     deltaEl.textContent = `▼ Turun ${Math.abs(deltaPrediksi).toFixed(3)} m dari hari ini`;
     deltaEl.className = "gauge-delta down";
   }
+
+  const badgeEl = document.getElementById("status-badge");
+  badgeEl.textContent = STATUS_LABEL[status] || status;
+  badgeEl.className = `status-badge status-${status}`;
+}
+
+function currentThresholds() {
+  return {
+    batas_waspada: parseFloat(document.getElementById("batas-waspada").value),
+    batas_kritis: parseFloat(document.getElementById("batas-kritis").value),
+  };
 }
 
 document.getElementById("predict-form").addEventListener("submit", async (e) => {
@@ -173,6 +276,7 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
+  Object.assign(payload, currentThresholds());
 
   const submitBtn = form.querySelector(".btn-predict");
   submitBtn.disabled = true;
@@ -191,11 +295,7 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
       return;
     }
 
-    updateGauge(
-      data.prediksi_elevasi_besok,
-      data.delta_elevasi_input,
-      parseFloat(payload.elevasi_hari_ini)
-    );
+    updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
   } catch (err) {
     errorEl.textContent = "Tidak bisa terhubung ke server prediksi. Coba lagi sebentar.";
     console.error("predict error:", err);
@@ -205,8 +305,24 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
   }
 });
 
+// Re-evaluasi status badge kalau ambang batas diubah setelah ada hasil prediksi
+["batas-waspada", "batas-kritis"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", () => {
+    const gaugeValueEl = document.getElementById("gauge-value");
+    if (document.getElementById("gauge-result").hidden) return;
+    const prediksi = parseFloat(gaugeValueEl.textContent);
+    const { batas_waspada, batas_kritis } = currentThresholds();
+    let status = "aman";
+    if (prediksi >= batas_kritis) status = "kritis";
+    else if (prediksi >= batas_waspada) status = "waspada";
+    const badgeEl = document.getElementById("status-badge");
+    badgeEl.textContent = STATUS_LABEL[status];
+    badgeEl.className = `status-badge status-${status}`;
+  });
+});
+
 // ------------------------------------------------------------------------
-// BAGIAN 4: Feature importance
+// BAGIAN 5: Feature importance
 // ------------------------------------------------------------------------
 async function loadFeatureImportance() {
   try {
@@ -245,3 +361,5 @@ async function loadFeatureImportance() {
 loadModelInfo();
 loadHistoricalChart();
 loadFeatureImportance();
+loadAkumulasiContext();
+updateComputedPreview();
