@@ -81,6 +81,12 @@ def hitung_akumulasi(curah_hujan_hari_ini: float, n_hari: int) -> float:
     return float(curah_hujan_hari_ini + sum(n_hari_sebelumnya))
 
 
+# --- Elevasi hari terakhir di data historis, dipakai sebagai "Elevasi     -----
+# Kemarin" otomatis (asumsi "Hari Ini" yang diinput pengguna = hari tepat
+# setelah tanggal terakhir di data historis, sama seperti asumsi akumulasi hujan)
+_elevasi_kemarin_auto = float(_df["Elevasi Muka Air Sump (m)"].iloc[-1])
+
+
 # --- Evaluasi performa model (RMSE/MAE/R²) memakai target elevasi besok ----
 def _evaluasi_model():
     df = _df.copy()
@@ -162,6 +168,17 @@ def akumulasi_context():
     })
 
 
+@app.route("/api/constants", methods=["GET"])
+def constants():
+    """Nilai konstanta lapangan (tidak pernah berubah di data historis),
+    ditampilkan sebagai info di dashboard + nilai default untuk slider sensitivitas."""
+    return jsonify({
+        "koefisien_limpasan": float(_df["Koefisien Limpasan ( C )"].iloc[-1]),
+        "luas_catchment_area": float(_df["Luas Catchment Area ( Km² )"].iloc[-1]),
+        "debit_pompa": float(_df["Debit Pompa ( m³/jam )"].iloc[-1]),
+    })
+
+
 @app.route("/api/feature-importance", methods=["GET"])
 def feature_importance():
     items = [
@@ -179,8 +196,10 @@ def predict():
         return jsonify({"sukses": False, "error": "Body request harus berupa JSON."}), 400
 
     # --- field wajib diisi manual oleh pengguna ---
+    # "elevasi_kemarin" TIDAK lagi wajib diisi manual -- diambil otomatis dari
+    # data historis (baris terakhir), sama seperti akumulasi hujan.
     wajib = [
-        "curah_hujan", "durasi_hujan", "elevasi_kemarin", "elevasi_hari_ini",
+        "curah_hujan", "durasi_hujan", "elevasi_hari_ini",
         "koefisien_limpasan", "luas_catchment_area",
     ]
     missing = [f for f in wajib if f not in payload or payload[f] in (None, "")]
@@ -190,12 +209,19 @@ def predict():
     try:
         curah_hujan = float(payload["curah_hujan"])
         durasi_hujan = float(payload["durasi_hujan"])
-        elevasi_kemarin = float(payload["elevasi_kemarin"])
         elevasi_hari_ini = float(payload["elevasi_hari_ini"])
         koef_c = float(payload["koefisien_limpasan"])
         luas_a = float(payload["luas_catchment_area"])
     except (TypeError, ValueError):
         return jsonify({"sukses": False, "error": "Semua nilai input harus berupa angka."}), 400
+
+    # Elevasi kemarin: pakai override manual kalau dikirim (jarang), kalau
+    # tidak, pakai nilai otomatis dari data historis.
+    elevasi_kemarin_raw = payload.get("elevasi_kemarin")
+    elevasi_kemarin = (
+        float(elevasi_kemarin_raw) if elevasi_kemarin_raw not in (None, "")
+        else _elevasi_kemarin_auto
+    )
 
     if not (0.0 <= koef_c <= 1.0):
         return jsonify({"sukses": False, "error": "Koefisien Limpasan (C) harus di antara 0.0 - 1.0."}), 400
@@ -251,6 +277,7 @@ def predict():
         "sukses": True,
         "prediksi_elevasi_besok": round(prediksi, 3),
         "elevasi_hari_ini": round(elevasi_hari_ini, 3),
+        "elevasi_kemarin_terhitung": round(elevasi_kemarin, 3),
         "delta_elevasi_input": round(delta_elevasi, 3),
         "debit_air_limpasan_terhitung": round(debit_limpasan, 4),
         "volume_sump_terhitung": round(volume_sump, 2),

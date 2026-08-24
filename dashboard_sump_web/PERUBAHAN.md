@@ -92,6 +92,48 @@ Semua fitur di atas dikerjakan tanpa perlu data tambahan (murni frontend
 sengaja dibuat sebagai placeholder yang bisa diisi gambar kapan saja lewat
 tombol upload — tidak perlu edit kode lagi begitu ada gambarnya.
 
+## Revisi Tampilan (Round 3)
+
+| # | Permintaan | Yang Dilakukan |
+|---|---|---|
+| 1 | Peta bisa di-zoom | Gambar peta yang dikirim sudah dipasang (`static/peta-sump.jpg`). Halaman Peta Lokasi sekarang bisa di-zoom (scroll mouse / tombol +/−) dan digeser (klik-tahan lalu drag, atau sentuh di HP) |
+| 2 | Background hujan bergerak | Blob lama diganti animasi tetesan hujan jatuh (CSS keyframes), dipasang di cover & di belakang konten |
+| 3 | Cover disederhanakan | Baris "Tugas Akhir · Teknik Pertambangan", nama, dan universitas dihapus dari cover. Judul jadi "Prediksi Elevasi Muka Air Sump" saja (tanpa kata "Dashboard") |
+| 4 | Slide-over drawer | Klik salah satu kartu di halaman Ringkasan Model (RMSE/MAE/R²/Data Historis) memunculkan panel detail yang menggeser dari kanan, tanpa pindah halaman |
+| 5 | Pisahkan section supaya tidak memanjang | "Ringkasan Performa Model" dan "Tren Historis" sekarang jadi 2 halaman sidebar terpisah, bukan ditumpuk satu halaman panjang |
+| 6 | Hapus input "Elevasi Kemarin"? | **Dilakukan, dengan catatan**: field ini dihapus dari form, TAPI nilainya tetap dipakai model (diambil otomatis dari data historis terakhir, bukan dihilangkan dari perhitungan). Lihat penjelasan di bawah. |
+| 7 | Konstanta jadi info + tetap bisa disensitivitas | Ditambah kartu "Konstanta Lapangan" (C, Luas Catchment, Debit Pompa — read-only, dari data asli). Koefisien Limpasan & Luas Catchment Area tetap bisa diubah di slider "Parameter Sensitivitas" untuk simulasi what-if. Debit Pompa murni informasi (tidak dipakai rumus manapun di dashboard ini) |
+| 8 | Hapus akumulasi hujan 3/5/7 dari tampilan | Blok input & preview akumulasi dihapus total dari form. Nilainya tetap dihitung otomatis di backend (model tetap butuh fitur ini), hanya tidak lagi ditampilkan/bisa diisi manual di UI |
+| 9 | Loading saat klik prediksi | Tombol prediksi sekarang menampilkan spinner berputar + teks "Memprediksi…" saat menunggu respons server |
+| 10 | Jangan terlalu memanjang | Sidebar diperluas dari 4 jadi 7 halaman (Ringkasan Model, Tren Historis, Prediksi, Variabel Berpengaruh, Peta Lokasi, Riwayat, Profil) — tiap konten punya halamannya sendiri, tidak digulung jadi satu scroll panjang |
+
+### Penjelasan poin 6 — "Elevasi Kemarin" dihapus dari form tapi bukan dari model
+
+Pendapat saya: field ini **tidak dihapus dari model** (kontribusinya ke prediksi
+cukup besar — bukan variabel kecil yang aman diabaikan), tapi **dihapus dari
+yang perlu diisi manual oleh pengguna**. Alasannya: "Elevasi Kemarin" itu
+sebenarnya bukan data baru yang perlu ditebak/diinput orang — nilainya adalah
+elevasi hari sebelumnya yang **sudah ada di data historis**, sama seperti
+akumulasi hujan yang juga diambil otomatis. Jadi sekarang dashboard mengambil
+otomatis dari baris terakhir data historis, pengguna cukup isi "Elevasi Hari
+Ini" saja. Hasilnya: form lebih ringkas, tapi akurasi prediksi tidak berkurang
+sama sekali karena fiturnya tetap dipakai model, cuma sumber datanya otomatis.
+
+### Penjelasan poin 7 — Konstanta lapangan
+
+Tiga variabel ini (`Koefisien Limpasan`, `Luas Catchment Area`, `Debit Pompa`)
+ternyata nilainya **selalu sama persis** di seluruh data historis (dicek
+langsung dari `dataset_final.xlsx`): C = 0.6, Luas = 3.66 km², Debit Pompa =
+800 m³/jam. Karena itu:
+- Ditampilkan sebagai info read-only (kartu "Konstanta Lapangan") — supaya
+  pengguna tahu nilai aslinya di lapangan.
+- **Koefisien Limpasan** & **Luas Catchment Area** tetap bisa diubah di
+  slider/field sensitivitas (dipakai untuk simulasi "bagaimana jika area
+  tangkapan air berubah") — karena keduanya memang dipakai backend untuk
+  menghitung Debit Air Limpasan.
+- **Debit Pompa** murni ditampilkan sebagai info saja, tidak dijadikan slider,
+  karena datanya tidak dipakai di rumus manapun dalam model/dashboard ini.
+
 ## Cara Update ke PythonAnywhere
 
 1. Upload/timpa semua file di atas ke repo GitHub Anda
