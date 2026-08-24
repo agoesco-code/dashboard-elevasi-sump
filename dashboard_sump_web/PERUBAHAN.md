@@ -64,13 +64,33 @@ ambang batas status").
 
 ```
 dashboard_sump_web/
-├── app.py                  <- ditulis ulang total (endpoint baru + kalkulasi otomatis)
-├── requirements.txt        <- ditambah 'openpyxl' (untuk baca file Excel)
+├── app.py                  <- tidak berubah di round 2 (logika & endpoint tetap sama)
+├── requirements.txt        <- tidak berubah
 └── static/
-    ├── index.html          <- form direvisi, tambah section sensitivitas & status
-    ├── script.js           <- tambah live preview & logika status badge
-    └── style.css            <- tambah style elemen baru + perbaikan bug bar
+    ├── index.html          <- direstruktur: tambah cover, sidebar, 4 halaman (dashboard/peta/riwayat/profil)
+    ├── script.js           <- tambah navigasi halaman, ikon status, confidence, riwayat, upload peta
+    ├── style.css            <- tambah style cover, sidebar, background animasi, halaman baru
+    └── logo.svg             <- BARU, logo resmi dashboard (juga dipakai sebagai favicon)
 ```
+
+## Revisi Tampilan (Round 2)
+
+| # | Permintaan | Yang Dilakukan |
+|---|---|---|
+| 1 | Peta/denah lokasi sump | Halaman **Peta Lokasi** baru — placeholder rapi + tombol pilih gambar dari perangkat (tersimpan di browser lewat localStorage), tinggal upload gambar peta kapan pun sudah ada |
+| 2 | Kartu status pakai ikon, bukan cuma teks | Badge status sekarang pakai ikon centang (Aman), segitiga (Waspada), lingkaran seru (Kritis) di samping teksnya |
+| 3 | Tangki dual lebih simpel, ada info "Perubahan" | Sudah ada dari versi sebelumnya (garis solid = hari ini, putus-putus = prediksi besok) — dipertahankan, ditambah info **tingkat keyakinan model** (dari sebaran pohon Random Forest, fitur `std_dev_pohon` yang sebelumnya dihitung tapi tidak ditampilkan) |
+| 4 | Sidebar navigasi di kiri | Sidebar baru dengan 4 menu: Dashboard, Peta Lokasi, Riwayat Prediksi, Profil — masing-masing dengan ikon |
+| 5 | Background dipercantik, ada gerakannya | Ditambah lapisan SVG "blob" yang bergerak pelan (animasi CSS) di halaman cover & di belakang konten, warna tetap memakai palet amber/cyan yang sudah ada |
+| 6 | Riwayat prediksi sebelumnya | Halaman **Riwayat Prediksi** baru — setiap kali klik "Prediksi Elevasi Besok", hasilnya otomatis tercatat (tersimpan di browser), bisa dihapus per-baris atau semua |
+| 7 | Cover/halaman awal yang bisa diklik | Layar pembuka baru dengan judul dashboard, logo, dan tombol "Masuk ke Dashboard" |
+| 8 | Halaman identitas pemilik | Halaman **Profil** baru berisi nama, NPM, jurusan, dan universitas |
+| 9 | Logo resmi | Logo baru (`static/logo.svg`) — ikon gelas berisi air, dipakai sebagai favicon, di sidebar, cover, dan halaman profil |
+
+Semua fitur di atas dikerjakan tanpa perlu data tambahan (murni frontend
++ 1 field yang sudah dikirim backend tapi belum ditampilkan). Peta lokasi
+sengaja dibuat sebagai placeholder yang bisa diisi gambar kapan saja lewat
+tombol upload — tidak perlu edit kode lagi begitu ada gambarnya.
 
 ## Cara Update ke PythonAnywhere
 
