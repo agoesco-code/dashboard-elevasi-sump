@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Prediksi Elevasi Sump — Dashboard</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css" />
@@ -11,234 +12,413 @@
 <body>
 
 <!-- ==================================================================
-     HEADER — judul dashboard + info ringkas model
+     COVER — layar pembuka, klik untuk masuk ke dashboard
      ================================================================== -->
-<header class="site-header">
-  <div class="header-inner">
-    <div class="brand">
-      <span class="brand-mark">SUMP·RF</span>
-      <div class="brand-text">
-        <h1>Prediksi Elevasi Muka Air Sump</h1>
-        <p class="brand-sub">Model prediktif Random Forest — Tambang Batubara</p>
+<div id="cover-screen" class="cover-screen">
+  <svg class="cover-bg-anim" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <path class="blob blob-1" d="M120,420 C220,300 380,300 460,420 C540,540 460,660 320,640 C180,620 20,540 120,420 Z"/>
+    <path class="blob blob-2" d="M900,200 C1020,180 1120,280 1100,400 C1080,520 940,560 860,480 C780,400 780,220 900,200 Z"/>
+    <path class="contour c1" d="M0,560 C200,520 380,600 600,560 C820,520 1000,600 1200,560"/>
+    <path class="contour c2" d="M0,610 C200,580 380,650 600,610 C820,570 1000,640 1200,600"/>
+  </svg>
+
+  <div class="cover-content">
+    <div class="cover-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <defs>
+          <linearGradient id="waterGradCover" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7fd0da"/>
+            <stop offset="100%" stop-color="#4a9aa6"/>
+          </linearGradient>
+          <clipPath id="cupClipCover">
+            <path d="M21,19 L43,19 L39.5,45 Q39,49 35,49 L29,49 Q25,49 24.5,45 Z"/>
+          </clipPath>
+        </defs>
+        <rect x="4" y="4" width="56" height="56" rx="14" fill="#1a2129"/>
+        <rect x="4.75" y="4.75" width="54.5" height="54.5" rx="13.25" fill="none" stroke="#2c343b" stroke-width="1.5"/>
+        <g clip-path="url(#cupClipCover)">
+          <path d="M20,31 Q26,27 32,31 T44,31 L44,50 L20,50 Z" fill="url(#waterGradCover)"/>
+          <path d="M20,31 Q26,27 32,31 T44,31" fill="none" stroke="#a9e2ea" stroke-width="1.2" opacity="0.8"/>
+        </g>
+        <path d="M21,19 L43,19 L39.5,45 Q39,49 35,49 L29,49 Q25,49 24.5,45 Z"
+              fill="none" stroke="#d98e3d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="cover-eyebrow">Tugas Akhir · Teknik Pertambangan</span>
+    <h1>Dashboard Prediksi<br>Elevasi Muka Air Sump</h1>
+    <p class="cover-sub">Model prediktif Random Forest untuk memantau &amp; memprediksi elevasi muka air sump tambang batubara.</p>
+    <button id="btn-masuk" class="btn-masuk">
+      Masuk ke Dashboard
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </button>
+    <span class="cover-credit">Rivky Khairuma Aguesco · Universitas Syiah Kuala</span>
+  </div>
+</div>
+
+<!-- ==================================================================
+     APP SHELL — sidebar + konten (disembunyikan sampai cover diklik)
+     ================================================================== -->
+<div id="app-shell" class="app-shell" hidden>
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="waterGradSide" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7fd0da"/>
+              <stop offset="100%" stop-color="#4a9aa6"/>
+            </linearGradient>
+            <clipPath id="cupClipSide">
+              <path d="M21,19 L43,19 L39.5,45 Q39,49 35,49 L29,49 Q25,49 24.5,45 Z"/>
+            </clipPath>
+          </defs>
+          <rect x="4" y="4" width="56" height="56" rx="14" fill="#1a2129"/>
+          <g clip-path="url(#cupClipSide)">
+            <path d="M20,31 Q26,27 32,31 T44,31 L44,50 L20,50 Z" fill="url(#waterGradSide)"/>
+          </g>
+          <path d="M21,19 L43,19 L39.5,45 Q39,49 35,49 L29,49 Q25,49 24.5,45 Z"
+                fill="none" stroke="#d98e3d" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="sidebar-brand-text">
+        <span class="sidebar-brand-title">SUMP·RF</span>
+        <span class="sidebar-brand-sub">Prediksi Elevasi</span>
       </div>
     </div>
-    <div class="model-pill" id="model-pill">
+
+    <nav class="sidebar-nav" aria-label="Navigasi dashboard">
+      <button class="nav-item active" data-page="dashboard" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="peta" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Peta Lokasi</span>
+      </button>
+      <button class="nav-item" data-page="riwayat" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+        <span>Riwayat Prediksi</span>
+      </button>
+      <button class="nav-item" data-page="profil" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+        <span>Profil</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer" id="model-pill">
       <span class="pill-dot"></span>
       <span id="model-pill-text">Memuat status model…</span>
     </div>
+  </aside>
+
+  <div class="content-area">
+    <svg class="bg-anim" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path class="blob blob-1" d="M150,150 C280,100 400,180 380,300 C360,420 220,460 130,380 C40,300 20,200 150,150 Z"/>
+      <path class="blob blob-2" d="M1000,500 C1120,480 1180,580 1120,680 C1060,780 930,760 900,660 C870,560 880,520 1000,500 Z"/>
+    </svg>
+
+    <header class="topbar">
+      <h1 id="page-title">Ringkasan Dashboard</h1>
+      <p id="page-subtitle">Pemantauan &amp; prediksi elevasi muka air sump secara real-time.</p>
+    </header>
+
+    <main class="layout">
+
+      <!-- ============================== PAGE: DASHBOARD ============================== -->
+      <div class="page active" data-page="dashboard">
+
+        <section class="panel metrics-panel" aria-labelledby="metrics-title">
+          <h2 id="metrics-title">1 · Ringkasan Performa Model</h2>
+          <p class="section-desc">Metrik hasil evaluasi model terhadap data historis (prediksi elevasi H+1 dibandingkan nilai aktualnya).</p>
+          <div class="metrics-grid" id="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">RMSE</span>
+              <span class="metric-value" id="metric-rmse">–</span>
+              <span class="metric-unit">meter</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">MAE</span>
+              <span class="metric-value" id="metric-mae">–</span>
+              <span class="metric-unit">meter</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">R²</span>
+              <span class="metric-value" id="metric-r2">–</span>
+              <span class="metric-unit">koefisien determinasi</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Data Historis</span>
+              <span class="metric-value" id="metric-n">–</span>
+              <span class="metric-unit">hari</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel chart-panel" aria-labelledby="chart-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="chart-title">2 · Tren Historis Elevasi Sump</h2>
+              <p class="section-desc">Pergerakan elevasi muka air sump dari waktu ke waktu, dibandingkan dengan curah hujan harian.</p>
+            </div>
+            <div class="range-toggle" role="group" aria-label="Rentang waktu grafik">
+              <button data-days="90" class="range-btn">90 hari</button>
+              <button data-days="180" class="range-btn">180 hari</button>
+              <button data-days="0" class="range-btn active">Semua</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="historicalChart" height="110"></canvas>
+          </div>
+        </section>
+
+        <div class="two-col">
+          <section class="panel predict-panel" aria-labelledby="predict-title">
+            <h2 id="predict-title">3 · Prediksi Elevasi Besok</h2>
+            <p class="section-desc">Masukkan kondisi hari ini untuk memprediksi elevasi muka air sump besok.</p>
+
+            <form id="predict-form" class="predict-form">
+              <div class="form-grid">
+                <label>Curah Hujan (mm)
+                  <input type="number" step="0.1" name="curah_hujan" required value="15" />
+                </label>
+                <label>Durasi Hujan (jam)
+                  <input type="number" step="0.1" name="durasi_hujan" required value="2.5" />
+                </label>
+                <label>Elevasi Kemarin (m)
+                  <input type="number" step="0.01" name="elevasi_kemarin" required value="-15.6" />
+                </label>
+                <label>Elevasi Hari Ini (m)
+                  <input type="number" step="0.01" name="elevasi_hari_ini" required value="-15.3" />
+                </label>
+              </div>
+
+              <div class="sensitivity-block">
+                <p class="sensitivity-title">Parameter Sensitivitas Catchment</p>
+                <p class="sensitivity-desc">
+                  Ubah nilai ini untuk melihat bagaimana karakteristik area tangkapan air
+                  memengaruhi debit limpasan &amp; hasil prediksi.
+                </p>
+                <div class="form-grid">
+                  <label>
+                    Koefisien Limpasan — C
+                    <span class="range-value" id="c-value-label">0.60</span>
+                    <input type="range" min="0" max="1" step="0.05" name="koefisien_limpasan" id="c-slider" value="0.6" />
+                  </label>
+                  <label>Luas Catchment Area (km²)
+                    <input type="number" step="0.01" min="0" name="luas_catchment_area" required value="3.66" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="computed-block" id="computed-block">
+                <div class="computed-item">
+                  <span class="computed-label">Debit Air Limpasan (dihitung otomatis)</span>
+                  <span class="computed-value" id="preview-debit">– m³/detik</span>
+                </div>
+                <div class="computed-item">
+                  <span class="computed-label">Volume Sump (dihitung otomatis)</span>
+                  <span class="computed-value" id="preview-volume">– m³</span>
+                </div>
+              </div>
+
+              <details class="advanced-block" open>
+                <summary>Akumulasi Hujan 3/5/7 Hari — dihitung otomatis</summary>
+                <p class="advanced-desc">
+                  Dihitung otomatis: <strong>Curah Hujan Hari Ini + curah hujan hari-hari sebelumnya
+                  dari data historis</strong> (bukan cuma taksiran). Pengaruh fitur ini ke hasil
+                  prediksi tetap kecil (gabungan &lt;1.5% — lihat bagian 4), tapi sekarang nilainya
+                  akurat, bukan kira-kira. Kosongkan untuk pakai hitungan otomatis, atau isi manual
+                  kalau Anda punya data yang lebih tepat.
+                </p>
+                <div class="computed-block" id="akumulasi-preview-block">
+                  <div class="computed-item">
+                    <span class="computed-label">Akumulasi 3 Hari</span>
+                    <span class="computed-value" id="preview-akum-3">– mm</span>
+                  </div>
+                  <div class="computed-item">
+                    <span class="computed-label">Akumulasi 5 Hari</span>
+                    <span class="computed-value" id="preview-akum-5">– mm</span>
+                  </div>
+                  <div class="computed-item">
+                    <span class="computed-label">Akumulasi 7 Hari</span>
+                    <span class="computed-value" id="preview-akum-7">– mm</span>
+                  </div>
+                </div>
+                <p class="advanced-desc" id="akum-context-note" style="margin-top:10px;"></p>
+                <div class="form-grid" style="margin-top:10px;">
+                  <label>Timpa manual: Akumulasi 3 Hari (mm)
+                    <input type="number" step="0.1" name="akumulasi_3" id="akum_3" placeholder="Kosongkan = otomatis" />
+                  </label>
+                  <label>Timpa manual: Akumulasi 5 Hari (mm)
+                    <input type="number" step="0.1" name="akumulasi_5" id="akum_5" placeholder="Kosongkan = otomatis" />
+                  </label>
+                  <label>Timpa manual: Akumulasi 7 Hari (mm)
+                    <input type="number" step="0.1" name="akumulasi_7" id="akum_7" placeholder="Kosongkan = otomatis" />
+                  </label>
+                </div>
+              </details>
+
+              <button type="submit" class="btn-predict">Prediksi Elevasi Besok</button>
+            </form>
+
+            <p class="form-error" id="form-error"></p>
+          </section>
+
+          <section class="panel gauge-panel" aria-labelledby="gauge-title">
+            <h2 id="gauge-title" class="sr-only">Hasil Prediksi</h2>
+            <div class="gauge-empty" id="gauge-empty">
+              <p>Isi form di sebelah kiri lalu klik <strong>“Prediksi Elevasi Besok”</strong> untuk melihat hasilnya di sini.</p>
+            </div>
+            <div class="gauge-result" id="gauge-result" hidden>
+              <span class="gauge-label">Prediksi Elevasi Besok</span>
+
+              <div class="tank-visual">
+                <svg viewBox="0 0 140 220" class="tank-svg" aria-hidden="true">
+                  <defs>
+                    <clipPath id="tankClip"><rect x="20" y="10" width="100" height="190" rx="8" /></clipPath>
+                  </defs>
+                  <rect x="20" y="10" width="100" height="190" rx="8" class="tank-shell" />
+                  <rect id="tank-fill-today" x="20" y="150" width="100" height="50" class="tank-fill" clip-path="url(#tankClip)" />
+                  <line id="tank-line-today" x1="20" y1="150" x2="120" y2="150" class="tank-line-today" />
+                  <line id="tank-line-pred" x1="20" y1="140" x2="120" y2="140" class="tank-line-pred" />
+                </svg>
+                <div class="tank-number">
+                  <span id="gauge-value">–</span>
+                  <span class="gauge-unit">meter</span>
+                </div>
+              </div>
+
+              <div class="tank-legend">
+                <span><i class="sw sw-today"></i>Hari ini</span>
+                <span><i class="sw sw-pred"></i>Prediksi besok</span>
+              </div>
+
+              <div class="gauge-delta" id="gauge-delta"></div>
+              <div class="gauge-confidence" id="gauge-confidence"></div>
+
+              <div class="status-badge" id="status-badge"></div>
+
+              <details class="thresholds-block">
+                <summary>Atur ambang batas status</summary>
+                <div class="form-grid">
+                  <label>Batas Waspada (m)
+                    <input type="number" step="0.1" id="batas-waspada" value="-15">
+                  </label>
+                  <label>Batas Kritis (m)
+                    <input type="number" step="0.1" id="batas-kritis" value="-14">
+                  </label>
+                </div>
+                <p class="advanced-desc">Default kritis di -14 m sesuai batas yang ditentukan. Sesuaikan kalau ada SOP berbeda di lapangan.</p>
+              </details>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel importance-panel" aria-labelledby="importance-title">
+          <h2 id="importance-title">4 · Variabel Paling Berpengaruh</h2>
+          <p class="section-desc">Seberapa besar kontribusi tiap variabel terhadap prediksi model Random Forest — semakin panjang batang, semakin besar pengaruhnya.</p>
+          <div id="importance-list" class="importance-list"></div>
+        </section>
+
+      </div>
+
+      <!-- ============================== PAGE: PETA LOKASI ============================== -->
+      <div class="page" data-page="peta">
+        <section class="panel" aria-labelledby="peta-title">
+          <h2 id="peta-title">Peta / Denah Lokasi Sump</h2>
+          <p class="section-desc">Tampilan lokasi sump di area tambang. Pilih gambar peta/denah dari perangkat Anda untuk ditampilkan di sini — tersimpan otomatis di browser ini.</p>
+
+          <div class="map-frame" id="map-frame">
+            <div class="map-placeholder" id="map-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <p>Belum ada gambar peta.<br>Unggah peta/denah lokasi sump untuk ditampilkan di sini.</p>
+            </div>
+            <img id="map-image" alt="Peta lokasi sump" hidden>
+          </div>
+
+          <div class="map-controls">
+            <label class="btn-upload">
+              Pilih Gambar Peta
+              <input type="file" id="map-upload-input" accept="image/*" hidden>
+            </label>
+            <button type="button" class="btn-secondary" id="map-clear-btn">Hapus Gambar</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================== PAGE: RIWAYAT PREDIKSI ============================== -->
+      <div class="page" data-page="riwayat">
+        <section class="panel" aria-labelledby="riwayat-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="riwayat-title">Riwayat Prediksi</h2>
+              <p class="section-desc">Catatan setiap prediksi yang pernah dijalankan dari dashboard ini, tersimpan di browser Anda.</p>
+            </div>
+            <button type="button" class="btn-secondary" id="riwayat-clear-btn">Hapus Riwayat</button>
+          </div>
+          <div id="riwayat-empty" class="riwayat-empty">
+            <p>Belum ada riwayat prediksi. Jalankan prediksi di halaman Dashboard untuk mulai mencatat riwayat.</p>
+          </div>
+          <div id="riwayat-list" class="riwayat-list"></div>
+        </section>
+      </div>
+
+      <!-- ============================== PAGE: PROFIL ============================== -->
+      <div class="page" data-page="profil">
+        <section class="panel profil-panel" aria-labelledby="profil-title">
+          <div class="profil-avatar">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+              <defs>
+                <linearGradient id="waterGradProfil" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#7fd0da"/>
+                  <stop offset="100%" stop-color="#4a9aa6"/>
+                </linearGradient>
+                <clipPath id="cupClipProfil">
+                  <path d="M21,19 L43,19 L39.5,45 Q39,49 35,49 L29,49 Q25,49 24.5,45 Z"/>
+                </clipPath>
+              </defs>
+              <rect x="4" y="4" width="56" height="56" rx="14" fill="#1a2129"/>
+              <g clip-path="url(#cupClipProfil)">
+                <path d="M20,31 Q26,27 32,31 T44,31 L44,50 L20,50 Z" fill="url(#waterGradProfil)"/>
+              </g>
+              <path d="M21,19 L43,19 L39.5,45 Q39,49 35,49 L29,49 Q25,49 24.5,45 Z"
+                    fill="none" stroke="#d98e3d" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h2 id="profil-title">Rivky Khairuma Aguesco</h2>
+          <p class="profil-role">Pengembang &amp; Peneliti Dashboard Ini</p>
+
+          <div class="profil-grid">
+            <div class="profil-item">
+              <span class="profil-label">NPM</span>
+              <span class="profil-value">2204108010028</span>
+            </div>
+            <div class="profil-item">
+              <span class="profil-label">Jurusan</span>
+              <span class="profil-value">Teknik Pertambangan</span>
+            </div>
+            <div class="profil-item">
+              <span class="profil-label">Universitas</span>
+              <span class="profil-value">Universitas Syiah Kuala</span>
+            </div>
+            <div class="profil-item">
+              <span class="profil-label">Proyek</span>
+              <span class="profil-value">Tugas Akhir — Prediksi Elevasi Muka Air Sump</span>
+            </div>
+          </div>
+
+          <p class="profil-footnote">Dashboard ini dikembangkan sebagai bagian dari penelitian tugas akhir, menggunakan model Random Forest untuk memprediksi elevasi muka air sump tambang batubara.</p>
+        </section>
+      </div>
+
+    </main>
+
+    <footer class="site-footer">
+      <p>Dibangun dari penelitian tugas akhir — Model Prediktif Elevasi Muka Air Sump Tambang Batubara Menggunakan Algoritma Random Forest.</p>
+    </footer>
   </div>
-  <svg class="contour-bg" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0,80 C150,40 300,100 450,60 C600,20 750,90 900,50 C1000,25 1100,70 1200,45" />
-    <path d="M0,100 C150,70 300,110 450,85 C600,55 750,105 900,75 C1000,55 1100,90 1200,70" />
-  </svg>
-</header>
-
-<main class="layout">
-
-  <!-- ================================================================
-       SECTION 1 — Ringkasan performa model
-       ================================================================ -->
-  <section class="panel metrics-panel" aria-labelledby="metrics-title">
-    <h2 id="metrics-title">1 · Ringkasan Performa Model</h2>
-    <p class="section-desc">Metrik hasil evaluasi model terhadap data historis (prediksi elevasi H+1 dibandingkan nilai aktualnya).</p>
-    <div class="metrics-grid" id="metrics-grid">
-      <div class="metric-card">
-        <span class="metric-label">RMSE</span>
-        <span class="metric-value" id="metric-rmse">–</span>
-        <span class="metric-unit">meter</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">MAE</span>
-        <span class="metric-value" id="metric-mae">–</span>
-        <span class="metric-unit">meter</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">R²</span>
-        <span class="metric-value" id="metric-r2">–</span>
-        <span class="metric-unit">koefisien determinasi</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">Data Historis</span>
-        <span class="metric-value" id="metric-n">–</span>
-        <span class="metric-unit">hari</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================================
-       SECTION 2 — Grafik tren historis elevasi & curah hujan
-       ================================================================ -->
-  <section class="panel chart-panel" aria-labelledby="chart-title">
-    <div class="panel-head">
-      <div>
-        <h2 id="chart-title">2 · Tren Historis Elevasi Sump</h2>
-        <p class="section-desc">Pergerakan elevasi muka air sump dari waktu ke waktu, dibandingkan dengan curah hujan harian.</p>
-      </div>
-      <div class="range-toggle" role="group" aria-label="Rentang waktu grafik">
-        <button data-days="90" class="range-btn">90 hari</button>
-        <button data-days="180" class="range-btn">180 hari</button>
-        <button data-days="0" class="range-btn active">Semua</button>
-      </div>
-    </div>
-    <div class="chart-wrap">
-      <canvas id="historicalChart" height="110"></canvas>
-    </div>
-  </section>
-
-  <div class="two-col">
-    <!-- ==============================================================
-         SECTION 3 — Form prediksi (bagian utama/hero interaktif)
-         ============================================================== -->
-    <section class="panel predict-panel" aria-labelledby="predict-title">
-      <h2 id="predict-title">3 · Prediksi Elevasi Besok</h2>
-      <p class="section-desc">Masukkan kondisi hari ini untuk memprediksi elevasi muka air sump besok.</p>
-
-      <form id="predict-form" class="predict-form">
-        <div class="form-grid">
-          <label>Curah Hujan (mm)
-            <input type="number" step="0.1" name="curah_hujan" required value="15" />
-          </label>
-          <label>Durasi Hujan (jam)
-            <input type="number" step="0.1" name="durasi_hujan" required value="2.5" />
-          </label>
-          <label>Elevasi Kemarin (m)
-            <input type="number" step="0.01" name="elevasi_kemarin" required value="-15.6" />
-          </label>
-          <label>Elevasi Hari Ini (m)
-            <input type="number" step="0.01" name="elevasi_hari_ini" required value="-15.3" />
-          </label>
-        </div>
-
-        <!-- ---- PARAMETER SENSITIVITAS (baru) ---- -->
-        <div class="sensitivity-block">
-          <p class="sensitivity-title">Parameter Sensitivitas Catchment</p>
-          <p class="sensitivity-desc">
-            Ubah nilai ini untuk melihat bagaimana karakteristik area tangkapan air
-            memengaruhi debit limpasan &amp; hasil prediksi.
-          </p>
-          <div class="form-grid">
-            <label>
-              Koefisien Limpasan — C
-              <span class="range-value" id="c-value-label">0.60</span>
-              <input type="range" min="0" max="1" step="0.05" name="koefisien_limpasan" id="c-slider" value="0.6" />
-            </label>
-            <label>Luas Catchment Area (km²)
-              <input type="number" step="0.01" min="0" name="luas_catchment_area" required value="3.66" />
-            </label>
-          </div>
-        </div>
-
-        <!-- ---- NILAI TERHITUNG OTOMATIS (baru, live preview) ---- -->
-        <div class="computed-block" id="computed-block">
-          <div class="computed-item">
-            <span class="computed-label">Debit Air Limpasan (dihitung otomatis)</span>
-            <span class="computed-value" id="preview-debit">– m³/detik</span>
-          </div>
-          <div class="computed-item">
-            <span class="computed-label">Volume Sump (dihitung otomatis)</span>
-            <span class="computed-value" id="preview-volume">– m³</span>
-          </div>
-        </div>
-
-        <!-- ---- AKUMULASI HUJAN (baru: dihitung otomatis dari data historis) ---- -->
-        <details class="advanced-block" open>
-          <summary>Akumulasi Hujan 3/5/7 Hari — dihitung otomatis</summary>
-          <p class="advanced-desc">
-            Dihitung otomatis: <strong>Curah Hujan Hari Ini + curah hujan hari-hari sebelumnya
-            dari data historis</strong> (bukan cuma taksiran). Pengaruh fitur ini ke hasil
-            prediksi tetap kecil (gabungan &lt;1.5% — lihat bagian 4), tapi sekarang nilainya
-            akurat, bukan kira-kira. Kosongkan untuk pakai hitungan otomatis, atau isi manual
-            kalau Anda punya data yang lebih tepat.
-          </p>
-          <div class="computed-block" id="akumulasi-preview-block">
-            <div class="computed-item">
-              <span class="computed-label">Akumulasi 3 Hari</span>
-              <span class="computed-value" id="preview-akum-3">– mm</span>
-            </div>
-            <div class="computed-item">
-              <span class="computed-label">Akumulasi 5 Hari</span>
-              <span class="computed-value" id="preview-akum-5">– mm</span>
-            </div>
-            <div class="computed-item">
-              <span class="computed-label">Akumulasi 7 Hari</span>
-              <span class="computed-value" id="preview-akum-7">– mm</span>
-            </div>
-          </div>
-          <p class="advanced-desc" id="akum-context-note" style="margin-top:10px;"></p>
-          <div class="form-grid" style="margin-top:10px;">
-            <label>Timpa manual: Akumulasi 3 Hari (mm)
-              <input type="number" step="0.1" name="akumulasi_3" id="akum_3" placeholder="Kosongkan = otomatis" />
-            </label>
-            <label>Timpa manual: Akumulasi 5 Hari (mm)
-              <input type="number" step="0.1" name="akumulasi_5" id="akum_5" placeholder="Kosongkan = otomatis" />
-            </label>
-            <label>Timpa manual: Akumulasi 7 Hari (mm)
-              <input type="number" step="0.1" name="akumulasi_7" id="akum_7" placeholder="Kosongkan = otomatis" />
-            </label>
-          </div>
-        </details>
-
-        <button type="submit" class="btn-predict">Prediksi Elevasi Besok</button>
-      </form>
-
-      <p class="form-error" id="form-error"></p>
-    </section>
-
-    <!-- ==============================================================
-         Signature element — gauge hasil prediksi + status
-         ============================================================== -->
-    <section class="panel gauge-panel" aria-labelledby="gauge-title">
-      <h2 id="gauge-title" class="sr-only">Hasil Prediksi</h2>
-      <div class="gauge-empty" id="gauge-empty">
-        <p>Isi form di sebelah kiri lalu klik <strong>“Prediksi Elevasi Besok”</strong> untuk melihat hasilnya di sini.</p>
-      </div>
-      <div class="gauge-result" id="gauge-result" hidden>
-        <span class="gauge-label">Prediksi Elevasi Besok</span>
-        <div class="gauge-visual">
-          <svg viewBox="0 0 200 200" class="gauge-dial" aria-hidden="true">
-            <circle cx="100" cy="100" r="86" class="gauge-track" />
-            <circle cx="100" cy="100" r="86" class="gauge-fill" id="gauge-fill-circle" />
-          </svg>
-          <div class="gauge-number">
-            <span id="gauge-value">–</span>
-            <span class="gauge-unit">meter</span>
-          </div>
-        </div>
-        <div class="gauge-delta" id="gauge-delta"></div>
-
-        <!-- ---- STATUS BADGE (baru) ---- -->
-        <div class="status-badge" id="status-badge"></div>
-
-        <details class="thresholds-block">
-          <summary>Atur ambang batas status</summary>
-          <div class="form-grid">
-            <label>Batas Waspada (m)
-              <input type="number" step="0.1" id="batas-waspada" value="-15">
-            </label>
-            <label>Batas Kritis (m)
-              <input type="number" step="0.1" id="batas-kritis" value="-14">
-            </label>
-          </div>
-          <p class="advanced-desc">Default kritis di -14 m sesuai batas yang ditentukan. Sesuaikan kalau ada SOP berbeda di lapangan.</p>
-        </details>
-      </div>
-    </section>
-  </div>
-
-  <!-- ================================================================
-       SECTION 4 — Feature importance
-       ================================================================ -->
-  <section class="panel importance-panel" aria-labelledby="importance-title">
-    <h2 id="importance-title">4 · Variabel Paling Berpengaruh</h2>
-    <p class="section-desc">Seberapa besar kontribusi tiap variabel terhadap prediksi model Random Forest — semakin panjang batang, semakin besar pengaruhnya.</p>
-    <div id="importance-list" class="importance-list"></div>
-  </section>
-
-</main>
-
-<footer class="site-footer">
-  <p>Dibangun dari penelitian tugas akhir — Model Prediktif Elevasi Muka Air Sump Tambang Batubara Menggunakan Algoritma Random Forest.</p>
-</footer>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="script.js"></script>

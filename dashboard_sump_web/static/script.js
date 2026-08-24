@@ -222,15 +222,30 @@ cSlider.addEventListener("input", () => {
 document.getElementsByName("curah_hujan")[0].addEventListener("input", updateAkumulasiPreview);
 
 // ------------------------------------------------------------------------
-// BAGIAN 4: Form prediksi -> gauge hasil + status badge
+// BAGIAN 4: Form prediksi -> tangki dual (hari ini vs prediksi) + status badge
 // ------------------------------------------------------------------------
-const GAUGE_CIRCUMFERENCE = 540.35; // 2 * PI * r(86), dihitung dari SVG di HTML
+const TANK_MIN_ELEV = -25.6; // batas bawah tangki (m), dari rentang data historis
+const TANK_MAX_ELEV = -14;   // batas atas tangki (m)
+const TANK_TOP_Y = 10, TANK_BOTTOM_Y = 200; // koordinat SVG
 
 const STATUS_LABEL = {
   aman: "AMAN",
   waspada: "WASPADA",
   kritis: "KRITIS",
 };
+
+// Ikon kecil per status, biar sekali lirik langsung kebaca tanpa perlu baca teks
+const STATUS_ICON = {
+  aman: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  waspada: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17.5" x2="12" y2="17.6"/></svg>',
+  kritis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.6"/></svg>',
+};
+
+function elevToTankY(elev) {
+  const clamped = Math.min(Math.max(elev, TANK_MIN_ELEV), TANK_MAX_ELEV);
+  const pct = (clamped - TANK_MIN_ELEV) / (TANK_MAX_ELEV - TANK_MIN_ELEV);
+  return TANK_BOTTOM_Y - pct * (TANK_BOTTOM_Y - TANK_TOP_Y);
+}
 
 function updateGauge(prediksi, elevasiHariIni, status) {
   document.getElementById("gauge-empty").hidden = true;
@@ -239,11 +254,22 @@ function updateGauge(prediksi, elevasiHariIni, status) {
 
   document.getElementById("gauge-value").textContent = prediksi.toFixed(3);
 
-  const deltaPrediksi = prediksi - elevasiHariIni;
-  const pct = Math.min(Math.abs(deltaPrediksi) / 2, 1);
-  const offset = GAUGE_CIRCUMFERENCE * (1 - pct);
-  document.getElementById("gauge-fill-circle").style.strokeDashoffset = offset;
+  const yToday = elevToTankY(elevasiHariIni);
+  const yPred = elevToTankY(prediksi);
 
+  const fillToday = document.getElementById("tank-fill-today");
+  fillToday.setAttribute("y", yToday);
+  fillToday.setAttribute("height", TANK_BOTTOM_Y - yToday);
+
+  const lineToday = document.getElementById("tank-line-today");
+  lineToday.setAttribute("y1", yToday);
+  lineToday.setAttribute("y2", yToday);
+
+  const linePred = document.getElementById("tank-line-pred");
+  linePred.setAttribute("y1", yPred);
+  linePred.setAttribute("y2", yPred);
+
+  const deltaPrediksi = prediksi - elevasiHariIni;
   const deltaEl = document.getElementById("gauge-delta");
   if (Math.abs(deltaPrediksi) < 0.02) {
     deltaEl.textContent = "Stabil dari hari ini";
@@ -257,9 +283,97 @@ function updateGauge(prediksi, elevasiHariIni, status) {
   }
 
   const badgeEl = document.getElementById("status-badge");
-  badgeEl.textContent = STATUS_LABEL[status] || status;
+  badgeEl.innerHTML = `${STATUS_ICON[status] || ""}<span>${STATUS_LABEL[status] || status}</span>`;
   badgeEl.className = `status-badge status-${status}`;
 }
+
+// ------------------------------------------------------------------------
+// BAGIAN 4b: Tingkat keyakinan prediksi (dari sebaran pohon Random Forest)
+// std_dev_pohon dikirim backend tapi sebelumnya tidak ditampilkan --
+// menunjukkan seberapa sepakat pohon-pohon dalam ensemble terhadap prediksi.
+// Tidak butuh data tambahan, murni dari model yang sudah ada.
+// ------------------------------------------------------------------------
+function updateConfidence(stdDevPohon) {
+  const el = document.getElementById("gauge-confidence");
+  if (stdDevPohon === undefined || stdDevPohon === null) { el.textContent = ""; return; }
+  let label;
+  if (stdDevPohon < 0.05) label = "Tinggi";
+  else if (stdDevPohon < 0.15) label = "Sedang";
+  else label = "Rendah";
+  el.textContent = `Tingkat keyakinan model: ${label} (σ pohon = ${stdDevPohon.toFixed(3)} m)`;
+}
+
+// ------------------------------------------------------------------------
+// BAGIAN 4c: Riwayat Prediksi — disimpan di localStorage browser
+// ------------------------------------------------------------------------
+const RIWAYAT_KEY = "riwayat_prediksi_sump";
+
+function ambilRiwayat() {
+  try {
+    return JSON.parse(localStorage.getItem(RIWAYAT_KEY)) || [];
+  } catch { return []; }
+}
+
+function simpanRiwayat(list) {
+  localStorage.setItem(RIWAYAT_KEY, JSON.stringify(list));
+}
+
+function tambahRiwayat(entry) {
+  const list = ambilRiwayat();
+  list.unshift(entry); // terbaru di atas
+  simpanRiwayat(list.slice(0, 100)); // batasi 100 entri
+  renderRiwayat();
+}
+
+function hapusEntriRiwayat(idx) {
+  const list = ambilRiwayat();
+  list.splice(idx, 1);
+  simpanRiwayat(list);
+  renderRiwayat();
+}
+
+function renderRiwayat() {
+  const list = ambilRiwayat();
+  const emptyEl = document.getElementById("riwayat-empty");
+  const listEl = document.getElementById("riwayat-list");
+  if (!emptyEl || !listEl) return;
+
+  if (list.length === 0) {
+    emptyEl.hidden = false;
+    listEl.innerHTML = "";
+    return;
+  }
+  emptyEl.hidden = true;
+
+  listEl.innerHTML = list.map((item, idx) => `
+    <div class="riwayat-row">
+      <span class="r-tanggal">${item.waktu}</span>
+      <span>
+        <span class="r-label">Elevasi Hari Ini</span>
+        <span class="r-value">${item.elevasiHariIni.toFixed(3)} m</span>
+      </span>
+      <span>
+        <span class="r-label">Prediksi Besok</span>
+        <span class="r-value">${item.prediksi.toFixed(3)} m</span>
+      </span>
+      <span class="r-status status-${item.status}">${STATUS_ICON[item.status] || ""}<span>${STATUS_LABEL[item.status] || item.status}</span></span>
+      <button class="r-delete" data-idx="${idx}" title="Hapus entri ini" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
+    </div>
+  `).join("");
+
+  listEl.querySelectorAll(".r-delete").forEach((btn) => {
+    btn.addEventListener("click", () => hapusEntriRiwayat(parseInt(btn.dataset.idx, 10)));
+  });
+}
+
+document.getElementById("riwayat-clear-btn")?.addEventListener("click", () => {
+  if (confirm("Hapus semua riwayat prediksi?")) {
+    simpanRiwayat([]);
+    renderRiwayat();
+  }
+});
 
 function currentThresholds() {
   return {
@@ -296,6 +410,14 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
     }
 
     updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
+    updateConfidence(data.std_dev_pohon);
+
+    tambahRiwayat({
+      waktu: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
+      elevasiHariIni: data.elevasi_hari_ini,
+      prediksi: data.prediksi_elevasi_besok,
+      status: data.status,
+    });
   } catch (err) {
     errorEl.textContent = "Tidak bisa terhubung ke server prediksi. Coba lagi sebentar.";
     console.error("predict error:", err);
@@ -356,6 +478,81 @@ async function loadFeatureImportance() {
 }
 
 // ------------------------------------------------------------------------
+// BAGIAN 6: Cover screen — klik untuk masuk ke dashboard
+// ------------------------------------------------------------------------
+const coverScreen = document.getElementById("cover-screen");
+const appShell = document.getElementById("app-shell");
+
+document.getElementById("btn-masuk").addEventListener("click", () => {
+  coverScreen.classList.add("cover-hidden");
+  appShell.hidden = false;
+  setTimeout(() => { coverScreen.hidden = true; }, 550);
+});
+
+// ------------------------------------------------------------------------
+// BAGIAN 7: Sidebar — navigasi antar halaman (Dashboard/Peta/Riwayat/Profil)
+// ------------------------------------------------------------------------
+const PAGE_META = {
+  dashboard: { title: "Ringkasan Dashboard", sub: "Pemantauan & prediksi elevasi muka air sump secara real-time." },
+  peta: { title: "Peta Lokasi Sump", sub: "Denah dan posisi sump di area tambang." },
+  riwayat: { title: "Riwayat Prediksi", sub: "Semua prediksi yang pernah dijalankan dari dashboard ini." },
+  profil: { title: "Profil", sub: "Identitas pengembang dashboard ini." },
+};
+
+document.querySelectorAll(".nav-item").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.page;
+
+    document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+    document.querySelector(`.page[data-page="${target}"]`).classList.add("active");
+
+    const meta = PAGE_META[target];
+    if (meta) {
+      document.getElementById("page-title").textContent = meta.title;
+      document.getElementById("page-subtitle").textContent = meta.sub;
+    }
+  });
+});
+
+// ------------------------------------------------------------------------
+// BAGIAN 8: Peta Lokasi — pilih gambar dari perangkat, simpan di localStorage
+// (biar tetap ada meski halaman di-refresh, tanpa perlu server/upload)
+// ------------------------------------------------------------------------
+const MAP_IMAGE_KEY = "peta_sump_gambar";
+
+function tampilkanPeta(dataUrl) {
+  const imgEl = document.getElementById("map-image");
+  const placeholderEl = document.getElementById("map-placeholder");
+  if (dataUrl) {
+    imgEl.src = dataUrl;
+    imgEl.hidden = false;
+    placeholderEl.hidden = true;
+  } else {
+    imgEl.hidden = true;
+    placeholderEl.hidden = false;
+  }
+}
+
+document.getElementById("map-upload-input")?.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem(MAP_IMAGE_KEY, reader.result);
+    tampilkanPeta(reader.result);
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById("map-clear-btn")?.addEventListener("click", () => {
+  localStorage.removeItem(MAP_IMAGE_KEY);
+  tampilkanPeta(null);
+});
+
+// ------------------------------------------------------------------------
 // INISIALISASI — jalankan semua saat halaman pertama kali dibuka
 // ------------------------------------------------------------------------
 loadModelInfo();
@@ -363,3 +560,5 @@ loadHistoricalChart();
 loadFeatureImportance();
 loadAkumulasiContext();
 updateComputedPreview();
+renderRiwayat();
+tampilkanPeta(localStorage.getItem(MAP_IMAGE_KEY));
