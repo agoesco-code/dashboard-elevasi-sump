@@ -1,27 +1,56 @@
 /* ========================================================================
    SCRIPT DASHBOARD
    File ini menghubungkan halaman (HTML) ke backend Flask (app.py) lewat
-   API. Dibagi jadi beberapa bagian sesuai section di halaman:
-     1. Ambil & tampilkan metrik performa model
-     2. Ambil & tampilkan grafik historis (pakai Chart.js)
-     3. Live preview Debit Limpasan & Volume Sump (dihitung di JS, cermin
-        dari rumus backend, supaya user lihat perubahan instan saat mengubah
-        parameter sensitivitas -- tanpa perlu klik submit dulu)
-     4. Kirim form prediksi ke backend, tampilkan hasil di gauge + status
-     5. Ambil & tampilkan feature importance
+   API. Dibagi jadi beberapa bagian sesuai section/halaman:
+     1. Metrik performa model + slide-over drawer detail
+     2. Grafik historis (Chart.js)
+     3. Live preview Debit Limpasan & Volume Sump + Konstanta Lapangan
+     4. Form prediksi -> tangki dual + status badge + loading spinner
+     5. Feature importance
+     6. Cover screen
+     7. Sidebar (navigasi 7 halaman)
+     8. Peta lokasi (zoom & pan)
+     9. Riwayat prediksi (localStorage)
+     10. Animasi latar hujan
    ======================================================================== */
 
 const API_BASE = ""; // kosong = pakai domain yang sama (Flask menyajikan frontend & API bersamaan)
 
-let historicalChart = null; // referensi objek Chart.js, supaya bisa di-update tanpa dibuat ulang
+let historicalChart = null;
 
 // ------------------------------------------------------------------------
-// BAGIAN 1: Metrik performa model
+// BAGIAN 1: Metrik performa model + drawer detail
 // ------------------------------------------------------------------------
+const METRIC_INFO = {
+  rmse: {
+    title: "RMSE",
+    unit: "meter",
+    desc: "Root Mean Squared Error — rata-rata besar kesalahan prediksi dalam satuan meter, dihitung dari akar rata-rata kuadrat selisih antara prediksi dan nilai aktual. RMSE memberi bobot lebih besar pada kesalahan yang besar, sehingga bagus untuk mendeteksi apakah model pernah meleset jauh.",
+  },
+  mae: {
+    title: "MAE",
+    unit: "meter",
+    desc: "Mean Absolute Error — rata-rata selisih absolut antara prediksi dan nilai aktual, dalam satuan meter. Lebih mudah dibaca sebagai \u201crata-rata meleset berapa meter\u201d dibanding RMSE, karena tidak memberi bobot ekstra pada kesalahan besar.",
+  },
+  r2: {
+    title: "R² (Koefisien Determinasi)",
+    unit: "",
+    desc: "Mengukur seberapa besar variasi elevasi besok yang berhasil dijelaskan oleh model, dalam skala 0 sampai 1. Semakin dekat ke 1, semakin baik model menangkap pola pada data historis.",
+  },
+  n: {
+    title: "Jumlah Data Historis",
+    unit: "hari",
+    desc: "Jumlah hari data historis yang dipakai untuk melatih & mengevaluasi model ini. Semakin banyak & semakin representatif datanya, semakin bisa diandalkan model terhadap kondisi lapangan yang sebenarnya.",
+  },
+};
+
+let _modelMetrics = {};
+
 async function loadModelInfo() {
   try {
     const res = await fetch(`${API_BASE}/api/model-info`);
     const data = await res.json();
+    _modelMetrics = data;
 
     document.getElementById("metric-rmse").textContent = data.rmse.toFixed(4);
     document.getElementById("metric-mae").textContent = data.mae.toFixed(4);
@@ -36,6 +65,39 @@ async function loadModelInfo() {
   }
 }
 
+const METRIC_VALUE_KEY = { rmse: "rmse", mae: "mae", r2: "r2", n: "jumlah_data" };
+
+function openDrawer(metricKey) {
+  const info = METRIC_INFO[metricKey];
+  if (!info) return;
+  const valKey = METRIC_VALUE_KEY[metricKey];
+  const raw = _modelMetrics[valKey];
+  const displayVal = typeof raw === "number"
+    ? (metricKey === "n" ? raw : raw.toFixed(4))
+    : "–";
+
+  document.getElementById("drawer-title").textContent = info.title;
+  document.getElementById("drawer-value").textContent = info.unit ? `${displayVal} ${info.unit}` : displayVal;
+  document.getElementById("drawer-desc").textContent = info.desc;
+
+  document.getElementById("drawer-panel").classList.add("open");
+  document.getElementById("drawer-panel").setAttribute("aria-hidden", "false");
+  document.getElementById("drawer-backdrop").classList.add("open");
+}
+
+function closeDrawer() {
+  document.getElementById("drawer-panel").classList.remove("open");
+  document.getElementById("drawer-panel").setAttribute("aria-hidden", "true");
+  document.getElementById("drawer-backdrop").classList.remove("open");
+}
+
+document.querySelectorAll(".metric-card").forEach((card) => {
+  card.addEventListener("click", () => openDrawer(card.dataset.metric));
+});
+document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
 // ------------------------------------------------------------------------
 // BAGIAN 2: Grafik historis (Chart.js)
 // ------------------------------------------------------------------------
@@ -47,7 +109,9 @@ async function loadHistoricalChart(days = 0) {
     const res = await fetch(url);
     const data = await res.json();
 
-    const ctx = document.getElementById("historicalChart").getContext("2d");
+    const canvasEl = document.getElementById("historicalChart");
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext("2d");
 
     if (historicalChart) {
       historicalChart.data.labels = data.tanggal;
@@ -88,9 +152,7 @@ async function loadHistoricalChart(days = 0) {
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: {
-            labels: { color: "#9aa3ab", font: { family: "IBM Plex Mono", size: 11 } },
-          },
+          legend: { labels: { color: "#9aa3ab", font: { family: "IBM Plex Mono", size: 11 } } },
           tooltip: {
             backgroundColor: "#1b2126",
             borderColor: "#2c343b",
@@ -100,10 +162,7 @@ async function loadHistoricalChart(days = 0) {
           },
         },
         scales: {
-          x: {
-            ticks: { color: "#6b747c", maxTicksLimit: 10, font: { size: 10 } },
-            grid: { color: "#232a30" },
-          },
+          x: { ticks: { color: "#6b747c", maxTicksLimit: 10, font: { size: 10 } }, grid: { color: "#232a30" } },
           yElevasi: {
             position: "left",
             title: { display: true, text: "Elevasi (m)", color: "#9aa3ab", font: { size: 11 } },
@@ -128,49 +187,36 @@ document.querySelectorAll(".range-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".range-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    const days = parseInt(btn.dataset.days, 10);
-    loadHistoricalChart(days);
+    loadHistoricalChart(parseInt(btn.dataset.days, 10));
   });
 });
 
 // ------------------------------------------------------------------------
-// BAGIAN 3: Live preview Debit Air Limpasan & Volume Sump
+// BAGIAN 3: Live preview Debit Air Limpasan & Volume Sump + Konstanta
 // (rumus ini CERMIN dari backend app.py -- kalau backend diubah, ubah juga di sini)
 // ------------------------------------------------------------------------
-
-// Koefisien kurva Volume = f(Elevasi), hasil fit kuadratik dari data historis (R²=0.9998)
 const VOL_COEFFS = [3114.43399297, 158864.87494434, 2060859.59270043]; // [a, b, c] utk a*x^2+b*x+c
 
-// Curah hujan 6 hari terakhir dari data historis -- dipakai utk live-preview
-// akumulasi 3/5/7 hari (cermin dari hitung_akumulasi() di backend app.py).
-let curahHujan6HariTerakhir = [];
-
-async function loadAkumulasiContext() {
+async function loadConstants() {
   try {
-    const res = await fetch(`${API_BASE}/api/akumulasi-context`);
+    const res = await fetch(`${API_BASE}/api/constants`);
     const data = await res.json();
-    curahHujan6HariTerakhir = data.curah_hujan_6_hari_terakhir;
-    document.getElementById("akum-context-note").textContent =
-      `Data historis terakhir: ${data.tanggal_terakhir}. "Hari Ini" diasumsikan tanggal setelah itu.`;
-    updateAkumulasiPreview();
+
+    document.getElementById("const-c").textContent = data.koefisien_limpasan.toFixed(2);
+    document.getElementById("const-luas").textContent = `${data.luas_catchment_area} km²`;
+    document.getElementById("const-pompa").textContent = `${data.debit_pompa} m³/jam`;
+
+    // Set nilai default slider/field sensitivitas mengikuti konstanta lapangan asli
+    const cSlider = document.getElementById("c-slider");
+    const cLabel = document.getElementById("c-value-label");
+    const luasInput = document.getElementById("luas-input");
+    if (cSlider) { cSlider.value = data.koefisien_limpasan; cLabel.textContent = data.koefisien_limpasan.toFixed(2); }
+    if (luasInput) luasInput.value = data.luas_catchment_area;
+
+    updateComputedPreview();
   } catch (err) {
-    console.error("loadAkumulasiContext error:", err);
+    console.error("loadConstants error:", err);
   }
-}
-
-function previewAkumulasi(curahHujanHariIni, nHari) {
-  const nHariSebelumnya = nHari > 1 ? curahHujan6HariTerakhir.slice(-(nHari - 1)) : [];
-  const jumlahSebelumnya = nHariSebelumnya.reduce((a, b) => a + b, 0);
-  return curahHujanHariIni + jumlahSebelumnya;
-}
-
-function updateAkumulasiPreview() {
-  const form = document.getElementById("predict-form");
-  const curah = parseFloat(form.curah_hujan.value) || 0;
-
-  document.getElementById("preview-akum-3").textContent = `${formatNumber(previewAkumulasi(curah, 3), 1)} mm`;
-  document.getElementById("preview-akum-5").textContent = `${formatNumber(previewAkumulasi(curah, 5), 1)} mm`;
-  document.getElementById("preview-akum-7").textContent = `${formatNumber(previewAkumulasi(curah, 7), 1)} mm`;
 }
 
 function previewVolumeSump(elevasi) {
@@ -205,7 +251,6 @@ function updateComputedPreview() {
   }
 }
 
-// Slider Koefisien Limpasan (C) — update label angka + preview
 const cSlider = document.getElementById("c-slider");
 const cValueLabel = document.getElementById("c-value-label");
 cSlider.addEventListener("input", () => {
@@ -213,28 +258,19 @@ cSlider.addEventListener("input", () => {
   updateComputedPreview();
 });
 
-// Field-field lain yang memengaruhi preview
 ["curah_hujan", "durasi_hujan", "luas_catchment_area", "elevasi_hari_ini"].forEach((name) => {
   document.getElementsByName(name)[0].addEventListener("input", updateComputedPreview);
 });
 
-// Curah hujan hari ini juga memengaruhi preview akumulasi 3/5/7 hari
-document.getElementsByName("curah_hujan")[0].addEventListener("input", updateAkumulasiPreview);
-
 // ------------------------------------------------------------------------
 // BAGIAN 4: Form prediksi -> tangki dual (hari ini vs prediksi) + status badge
 // ------------------------------------------------------------------------
-const TANK_MIN_ELEV = -25.6; // batas bawah tangki (m), dari rentang data historis
-const TANK_MAX_ELEV = -14;   // batas atas tangki (m)
-const TANK_TOP_Y = 10, TANK_BOTTOM_Y = 200; // koordinat SVG
+const TANK_MIN_ELEV = -25.6;
+const TANK_MAX_ELEV = -14;
+const TANK_TOP_Y = 10, TANK_BOTTOM_Y = 200;
 
-const STATUS_LABEL = {
-  aman: "AMAN",
-  waspada: "WASPADA",
-  kritis: "KRITIS",
-};
+const STATUS_LABEL = { aman: "AMAN", waspada: "WASPADA", kritis: "KRITIS" };
 
-// Ikon kecil per status, biar sekali lirik langsung kebaca tanpa perlu baca teks
 const STATUS_ICON = {
   aman: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   waspada: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17.5" x2="12" y2="17.6"/></svg>',
@@ -261,13 +297,10 @@ function updateGauge(prediksi, elevasiHariIni, status) {
   fillToday.setAttribute("y", yToday);
   fillToday.setAttribute("height", TANK_BOTTOM_Y - yToday);
 
-  const lineToday = document.getElementById("tank-line-today");
-  lineToday.setAttribute("y1", yToday);
-  lineToday.setAttribute("y2", yToday);
-
-  const linePred = document.getElementById("tank-line-pred");
-  linePred.setAttribute("y1", yPred);
-  linePred.setAttribute("y2", yPred);
+  document.getElementById("tank-line-today").setAttribute("y1", yToday);
+  document.getElementById("tank-line-today").setAttribute("y2", yToday);
+  document.getElementById("tank-line-pred").setAttribute("y1", yPred);
+  document.getElementById("tank-line-pred").setAttribute("y2", yPred);
 
   const deltaPrediksi = prediksi - elevasiHariIni;
   const deltaEl = document.getElementById("gauge-delta");
@@ -287,12 +320,6 @@ function updateGauge(prediksi, elevasiHariIni, status) {
   badgeEl.className = `status-badge status-${status}`;
 }
 
-// ------------------------------------------------------------------------
-// BAGIAN 4b: Tingkat keyakinan prediksi (dari sebaran pohon Random Forest)
-// std_dev_pohon dikirim backend tapi sebelumnya tidak ditampilkan --
-// menunjukkan seberapa sepakat pohon-pohon dalam ensemble terhadap prediksi.
-// Tidak butuh data tambahan, murni dari model yang sudah ada.
-// ------------------------------------------------------------------------
 function updateConfidence(stdDevPohon) {
   const el = document.getElementById("gauge-confidence");
   if (stdDevPohon === undefined || stdDevPohon === null) { el.textContent = ""; return; }
@@ -303,25 +330,280 @@ function updateConfidence(stdDevPohon) {
   el.textContent = `Tingkat keyakinan model: ${label} (σ pohon = ${stdDevPohon.toFixed(3)} m)`;
 }
 
+function currentThresholds() {
+  return {
+    batas_waspada: parseFloat(document.getElementById("batas-waspada").value),
+    batas_kritis: parseFloat(document.getElementById("batas-kritis").value),
+  };
+}
+
+document.getElementById("predict-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errorEl = document.getElementById("form-error");
+  errorEl.textContent = "";
+
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+  Object.assign(payload, currentThresholds());
+
+  const submitBtn = form.querySelector(".btn-predict");
+  const spinnerEl = submitBtn.querySelector(".btn-spinner");
+  const labelEl = submitBtn.querySelector(".btn-label");
+  submitBtn.disabled = true;
+  spinnerEl.hidden = false;
+  labelEl.textContent = "Memprediksi…";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (!data.sukses) {
+      errorEl.textContent = data.error || "Terjadi kesalahan saat memprediksi.";
+      return;
+    }
+
+    updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
+    updateConfidence(data.std_dev_pohon);
+
+    tambahRiwayat({
+      waktu: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
+      elevasiHariIni: data.elevasi_hari_ini,
+      prediksi: data.prediksi_elevasi_besok,
+      status: data.status,
+    });
+  } catch (err) {
+    errorEl.textContent = "Tidak bisa terhubung ke server prediksi. Coba lagi sebentar.";
+    console.error("predict error:", err);
+  } finally {
+    submitBtn.disabled = false;
+    spinnerEl.hidden = true;
+    labelEl.textContent = "Prediksi Elevasi Besok";
+  }
+});
+
+["batas-waspada", "batas-kritis"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", () => {
+    if (document.getElementById("gauge-result").hidden) return;
+    const prediksi = parseFloat(document.getElementById("gauge-value").textContent);
+    const { batas_waspada, batas_kritis } = currentThresholds();
+    let status = "aman";
+    if (prediksi >= batas_kritis) status = "kritis";
+    else if (prediksi >= batas_waspada) status = "waspada";
+    const badgeEl = document.getElementById("status-badge");
+    badgeEl.innerHTML = `${STATUS_ICON[status] || ""}<span>${STATUS_LABEL[status]}</span>`;
+    badgeEl.className = `status-badge status-${status}`;
+  });
+});
+
 // ------------------------------------------------------------------------
-// BAGIAN 4c: Riwayat Prediksi — disimpan di localStorage browser
+// BAGIAN 5: Feature importance
+// ------------------------------------------------------------------------
+async function loadFeatureImportance() {
+  try {
+    const res = await fetch(`${API_BASE}/api/feature-importance`);
+    const data = await res.json();
+
+    const container = document.getElementById("importance-list");
+    container.innerHTML = "";
+
+    const maxImportance = Math.max(...data.map((d) => d.importance));
+
+    data.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "importance-row";
+      const pct = (item.importance / maxImportance) * 100;
+      const pctLabel = (item.importance * 100).toFixed(1) + "%";
+      row.innerHTML = `
+        <span class="fitur-name">${item.fitur}</span>
+        <span class="importance-bar-track"><span class="importance-bar-fill" style="width:${pct}%"></span></span>
+        <span class="pct">${pctLabel}</span>
+      `;
+      container.appendChild(row);
+    });
+  } catch (err) {
+    console.error("loadFeatureImportance error:", err);
+  }
+}
+
+// ------------------------------------------------------------------------
+// BAGIAN 6: Cover screen — klik untuk masuk ke dashboard
+// ------------------------------------------------------------------------
+const coverScreen = document.getElementById("cover-screen");
+const appShell = document.getElementById("app-shell");
+
+document.getElementById("btn-masuk").addEventListener("click", () => {
+  coverScreen.classList.add("cover-hidden");
+  appShell.hidden = false;
+  setTimeout(() => { coverScreen.hidden = true; }, 550);
+});
+
+// ------------------------------------------------------------------------
+// BAGIAN 7: Sidebar — navigasi antar 7 halaman
+// ------------------------------------------------------------------------
+const PAGE_META = {
+  ringkasan: { title: "Ringkasan Performa Model", sub: "Metrik hasil evaluasi model terhadap data historis." },
+  tren: { title: "Tren Historis", sub: "Pergerakan elevasi muka air sump dari waktu ke waktu." },
+  prediksi: { title: "Prediksi Elevasi Besok", sub: "Masukkan kondisi hari ini untuk memprediksi elevasi besok." },
+  variabel: { title: "Variabel Berpengaruh", sub: "Kontribusi tiap variabel terhadap hasil prediksi model." },
+  peta: { title: "Peta Lokasi Sump", sub: "Denah dan posisi sump di area tambang." },
+  riwayat: { title: "Riwayat Prediksi", sub: "Semua prediksi yang pernah dijalankan dari dashboard ini." },
+  profil: { title: "Profil", sub: "Identitas pengembang dashboard ini." },
+};
+
+document.querySelectorAll(".nav-item").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.page;
+
+    document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+    document.querySelector(`.page[data-page="${target}"]`).classList.add("active");
+
+    const meta = PAGE_META[target];
+    if (meta) {
+      document.getElementById("page-title").textContent = meta.title;
+      document.getElementById("page-subtitle").textContent = meta.sub;
+    }
+  });
+});
+
+// ------------------------------------------------------------------------
+// BAGIAN 8: Peta Lokasi — zoom (scroll) & pan (drag), + ganti gambar opsional
+// ------------------------------------------------------------------------
+const MAP_IMAGE_KEY = "peta_sump_gambar_custom";
+const DEFAULT_MAP_SRC = "peta-sump.jpg";
+
+const mapViewport = document.getElementById("map-viewport");
+const mapImage = document.getElementById("map-image");
+const mapFrame = document.getElementById("map-frame");
+
+let mapScale = 1, mapX = 0, mapY = 0;
+let mapMinScale = 1;
+let isDragging = false, dragStartX = 0, dragStartY = 0, mapStartX = 0, mapStartY = 0;
+
+function terapkanTransformPeta() {
+  mapImage.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
+}
+
+function batasiPosisiPeta() {
+  const frameRect = mapFrame.getBoundingClientRect();
+  const imgW = mapImage.naturalWidth * mapScale;
+  const imgH = mapImage.naturalHeight * mapScale;
+  const minX = Math.min(0, frameRect.width - imgW);
+  const minY = Math.min(0, frameRect.height - imgH);
+  mapX = Math.max(minX, Math.min(0, mapX));
+  mapY = Math.max(minY, Math.min(0, mapY));
+}
+
+function resetTampilanPeta() {
+  if (!mapImage.naturalWidth) return;
+  const frameRect = mapFrame.getBoundingClientRect();
+  mapMinScale = Math.max(frameRect.width / mapImage.naturalWidth, frameRect.height / mapImage.naturalHeight);
+  mapScale = mapMinScale;
+  mapX = (frameRect.width - mapImage.naturalWidth * mapScale) / 2;
+  mapY = (frameRect.height - mapImage.naturalHeight * mapScale) / 2;
+  terapkanTransformPeta();
+}
+
+mapImage.addEventListener("load", resetTampilanPeta);
+if (mapImage.complete && mapImage.naturalWidth) resetTampilanPeta();
+window.addEventListener("resize", resetTampilanPeta);
+
+function zoomPeta(faktor, clientX, clientY) {
+  const frameRect = mapFrame.getBoundingClientRect();
+  const cx = clientX !== undefined ? clientX - frameRect.left : frameRect.width / 2;
+  const cy = clientY !== undefined ? clientY - frameRect.top : frameRect.height / 2;
+
+  const scaleBaru = Math.min(Math.max(mapScale * faktor, mapMinScale), mapMinScale * 8);
+  const rasio = scaleBaru / mapScale;
+
+  mapX = cx - (cx - mapX) * rasio;
+  mapY = cy - (cy - mapY) * rasio;
+  mapScale = scaleBaru;
+
+  batasiPosisiPeta();
+  terapkanTransformPeta();
+}
+
+mapViewport.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  zoomPeta(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+}, { passive: false });
+
+document.getElementById("map-zoom-in").addEventListener("click", () => zoomPeta(1.3));
+document.getElementById("map-zoom-out").addEventListener("click", () => zoomPeta(1 / 1.3));
+document.getElementById("map-zoom-reset").addEventListener("click", resetTampilanPeta);
+
+mapViewport.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  mapViewport.classList.add("grabbing");
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  mapStartX = mapX; mapStartY = mapY;
+});
+window.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  mapX = mapStartX + (e.clientX - dragStartX);
+  mapY = mapStartY + (e.clientY - dragStartY);
+  batasiPosisiPeta();
+  terapkanTransformPeta();
+});
+window.addEventListener("mouseup", () => { isDragging = false; mapViewport.classList.remove("grabbing"); });
+
+// Dukungan sentuh (mobile/tablet) — satu jari untuk geser
+mapViewport.addEventListener("touchstart", (e) => {
+  if (e.touches.length !== 1) return;
+  isDragging = true;
+  dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+  mapStartX = mapX; mapStartY = mapY;
+}, { passive: true });
+mapViewport.addEventListener("touchmove", (e) => {
+  if (!isDragging || e.touches.length !== 1) return;
+  mapX = mapStartX + (e.touches[0].clientX - dragStartX);
+  mapY = mapStartY + (e.touches[0].clientY - dragStartY);
+  batasiPosisiPeta();
+  terapkanTransformPeta();
+}, { passive: true });
+mapViewport.addEventListener("touchend", () => { isDragging = false; });
+
+document.getElementById("map-upload-input")?.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem(MAP_IMAGE_KEY, reader.result);
+    mapImage.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById("map-clear-btn")?.addEventListener("click", () => {
+  localStorage.removeItem(MAP_IMAGE_KEY);
+  mapImage.src = DEFAULT_MAP_SRC;
+});
+
+const customMap = localStorage.getItem(MAP_IMAGE_KEY);
+if (customMap) mapImage.src = customMap;
+
+// ------------------------------------------------------------------------
+// BAGIAN 9: Riwayat Prediksi — disimpan di localStorage browser
 // ------------------------------------------------------------------------
 const RIWAYAT_KEY = "riwayat_prediksi_sump";
 
 function ambilRiwayat() {
-  try {
-    return JSON.parse(localStorage.getItem(RIWAYAT_KEY)) || [];
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(RIWAYAT_KEY)) || []; } catch { return []; }
 }
-
-function simpanRiwayat(list) {
-  localStorage.setItem(RIWAYAT_KEY, JSON.stringify(list));
-}
+function simpanRiwayat(list) { localStorage.setItem(RIWAYAT_KEY, JSON.stringify(list)); }
 
 function tambahRiwayat(entry) {
   const list = ambilRiwayat();
-  list.unshift(entry); // terbaru di atas
-  simpanRiwayat(list.slice(0, 100)); // batasi 100 entri
+  list.unshift(entry);
+  simpanRiwayat(list.slice(0, 100));
   renderRiwayat();
 }
 
@@ -375,182 +657,31 @@ document.getElementById("riwayat-clear-btn")?.addEventListener("click", () => {
   }
 });
 
-function currentThresholds() {
-  return {
-    batas_waspada: parseFloat(document.getElementById("batas-waspada").value),
-    batas_kritis: parseFloat(document.getElementById("batas-kritis").value),
-  };
-}
-
-document.getElementById("predict-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const form = e.target;
-  const errorEl = document.getElementById("form-error");
-  errorEl.textContent = "";
-
-  const formData = new FormData(form);
-  const payload = Object.fromEntries(formData.entries());
-  Object.assign(payload, currentThresholds());
-
-  const submitBtn = form.querySelector(".btn-predict");
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Memprediksi…";
-
-  try {
-    const res = await fetch(`${API_BASE}/api/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-
-    if (!data.sukses) {
-      errorEl.textContent = data.error || "Terjadi kesalahan saat memprediksi.";
-      return;
-    }
-
-    updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
-    updateConfidence(data.std_dev_pohon);
-
-    tambahRiwayat({
-      waktu: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
-      elevasiHariIni: data.elevasi_hari_ini,
-      prediksi: data.prediksi_elevasi_besok,
-      status: data.status,
-    });
-  } catch (err) {
-    errorEl.textContent = "Tidak bisa terhubung ke server prediksi. Coba lagi sebentar.";
-    console.error("predict error:", err);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Prediksi Elevasi Besok";
-  }
-});
-
-// Re-evaluasi status badge kalau ambang batas diubah setelah ada hasil prediksi
-["batas-waspada", "batas-kritis"].forEach((id) => {
-  document.getElementById(id).addEventListener("change", () => {
-    const gaugeValueEl = document.getElementById("gauge-value");
-    if (document.getElementById("gauge-result").hidden) return;
-    const prediksi = parseFloat(gaugeValueEl.textContent);
-    const { batas_waspada, batas_kritis } = currentThresholds();
-    let status = "aman";
-    if (prediksi >= batas_kritis) status = "kritis";
-    else if (prediksi >= batas_waspada) status = "waspada";
-    const badgeEl = document.getElementById("status-badge");
-    badgeEl.textContent = STATUS_LABEL[status];
-    badgeEl.className = `status-badge status-${status}`;
-  });
-});
-
 // ------------------------------------------------------------------------
-// BAGIAN 5: Feature importance
+// BAGIAN 10: Animasi latar hujan — dipasang di cover & di belakang konten
 // ------------------------------------------------------------------------
-async function loadFeatureImportance() {
-  try {
-    const res = await fetch(`${API_BASE}/api/feature-importance`);
-    const data = await res.json();
-
-    const container = document.getElementById("importance-list");
-    container.innerHTML = "";
-
-    const maxImportance = Math.max(...data.map((d) => d.importance));
-
-    data.forEach((item) => {
-      const row = document.createElement("div");
-      row.className = "importance-row";
-
-      const pct = (item.importance / maxImportance) * 100;
-      const pctLabel = (item.importance * 100).toFixed(1) + "%";
-
-      row.innerHTML = `
-        <span class="fitur-name">${item.fitur}</span>
-        <span class="importance-bar-track">
-          <span class="importance-bar-fill" style="width:${pct}%"></span>
-        </span>
-        <span class="pct">${pctLabel}</span>
-      `;
-      container.appendChild(row);
-    });
-  } catch (err) {
-    console.error("loadFeatureImportance error:", err);
+function buatHujan(containerId, jumlah) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  for (let i = 0; i < jumlah; i++) {
+    const drop = document.createElement("span");
+    drop.className = "rain-drop";
+    const left = Math.random() * 100;
+    const duration = 0.7 + Math.random() * 0.9;
+    const delay = Math.random() * 3;
+    const height = 40 + Math.random() * 50;
+    const opacity = 0.4 + Math.random() * 0.5;
+    drop.style.left = `${left}%`;
+    drop.style.height = `${height}px`;
+    drop.style.animationDuration = `${duration}s`;
+    drop.style.animationDelay = `${delay}s`;
+    drop.style.opacity = opacity;
+    container.appendChild(drop);
   }
 }
 
-// ------------------------------------------------------------------------
-// BAGIAN 6: Cover screen — klik untuk masuk ke dashboard
-// ------------------------------------------------------------------------
-const coverScreen = document.getElementById("cover-screen");
-const appShell = document.getElementById("app-shell");
-
-document.getElementById("btn-masuk").addEventListener("click", () => {
-  coverScreen.classList.add("cover-hidden");
-  appShell.hidden = false;
-  setTimeout(() => { coverScreen.hidden = true; }, 550);
-});
-
-// ------------------------------------------------------------------------
-// BAGIAN 7: Sidebar — navigasi antar halaman (Dashboard/Peta/Riwayat/Profil)
-// ------------------------------------------------------------------------
-const PAGE_META = {
-  dashboard: { title: "Ringkasan Dashboard", sub: "Pemantauan & prediksi elevasi muka air sump secara real-time." },
-  peta: { title: "Peta Lokasi Sump", sub: "Denah dan posisi sump di area tambang." },
-  riwayat: { title: "Riwayat Prediksi", sub: "Semua prediksi yang pernah dijalankan dari dashboard ini." },
-  profil: { title: "Profil", sub: "Identitas pengembang dashboard ini." },
-};
-
-document.querySelectorAll(".nav-item").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.page;
-
-    document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
-    document.querySelector(`.page[data-page="${target}"]`).classList.add("active");
-
-    const meta = PAGE_META[target];
-    if (meta) {
-      document.getElementById("page-title").textContent = meta.title;
-      document.getElementById("page-subtitle").textContent = meta.sub;
-    }
-  });
-});
-
-// ------------------------------------------------------------------------
-// BAGIAN 8: Peta Lokasi — pilih gambar dari perangkat, simpan di localStorage
-// (biar tetap ada meski halaman di-refresh, tanpa perlu server/upload)
-// ------------------------------------------------------------------------
-const MAP_IMAGE_KEY = "peta_sump_gambar";
-
-function tampilkanPeta(dataUrl) {
-  const imgEl = document.getElementById("map-image");
-  const placeholderEl = document.getElementById("map-placeholder");
-  if (dataUrl) {
-    imgEl.src = dataUrl;
-    imgEl.hidden = false;
-    placeholderEl.hidden = true;
-  } else {
-    imgEl.hidden = true;
-    placeholderEl.hidden = false;
-  }
-}
-
-document.getElementById("map-upload-input")?.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    localStorage.setItem(MAP_IMAGE_KEY, reader.result);
-    tampilkanPeta(reader.result);
-  };
-  reader.readAsDataURL(file);
-});
-
-document.getElementById("map-clear-btn")?.addEventListener("click", () => {
-  localStorage.removeItem(MAP_IMAGE_KEY);
-  tampilkanPeta(null);
-});
+buatHujan("rain-cover", 70);
+buatHujan("rain-content", 55);
 
 // ------------------------------------------------------------------------
 // INISIALISASI — jalankan semua saat halaman pertama kali dibuka
@@ -558,7 +689,6 @@ document.getElementById("map-clear-btn")?.addEventListener("click", () => {
 loadModelInfo();
 loadHistoricalChart();
 loadFeatureImportance();
-loadAkumulasiContext();
+loadConstants();
 updateComputedPreview();
 renderRiwayat();
-tampilkanPeta(localStorage.getItem(MAP_IMAGE_KEY));
