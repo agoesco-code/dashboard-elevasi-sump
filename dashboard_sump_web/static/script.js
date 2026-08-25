@@ -25,22 +25,22 @@ const METRIC_INFO = {
   rmse: {
     title: "RMSE",
     unit: "meter",
-    desc: "Root Mean Squared Error — rata-rata besar kesalahan prediksi dalam satuan meter, dihitung dari akar rata-rata kuadrat selisih antara prediksi dan nilai aktual. RMSE memberi bobot lebih besar pada kesalahan yang besar, sehingga bagus untuk mendeteksi apakah model pernah meleset jauh.",
+    desc: "Root Mean Squared Error — rata-rata besar kesalahan prediksi dalam satuan meter, dihitung dari akar rata-rata kuadrat selisih antara prediksi dan nilai aktual. Dihitung dari 15% data uji terakhir (data yang tidak dipakai saat melatih model), supaya mencerminkan performa model pada data baru yang belum pernah dilihat.",
   },
   mae: {
     title: "MAE",
     unit: "meter",
-    desc: "Mean Absolute Error — rata-rata selisih absolut antara prediksi dan nilai aktual, dalam satuan meter. Lebih mudah dibaca sebagai \u201crata-rata meleset berapa meter\u201d dibanding RMSE, karena tidak memberi bobot ekstra pada kesalahan besar.",
+    desc: "Mean Absolute Error — rata-rata selisih absolut antara prediksi dan nilai aktual, dalam satuan meter. Lebih mudah dibaca sebagai \u201crata-rata meleset berapa meter\u201d dibanding RMSE. Sama seperti RMSE, dihitung dari 15% data uji terakhir.",
   },
   r2: {
     title: "R² (Koefisien Determinasi)",
     unit: "",
-    desc: "Mengukur seberapa besar variasi elevasi besok yang berhasil dijelaskan oleh model, dalam skala 0 sampai 1. Semakin dekat ke 1, semakin baik model menangkap pola pada data historis.",
+    desc: "Mengukur seberapa besar variasi elevasi besok yang berhasil dijelaskan oleh model, dalam skala 0 sampai 1. Semakin dekat ke 1, semakin baik model menangkap pola pada data. Dihitung dari 15% data uji terakhir, bukan dari data yang dipakai melatih model.",
   },
   n: {
     title: "Jumlah Data Historis",
     unit: "hari",
-    desc: "Jumlah hari data historis yang dipakai untuk melatih & mengevaluasi model ini. Semakin banyak & semakin representatif datanya, semakin bisa diandalkan model terhadap kondisi lapangan yang sebenarnya.",
+    desc: "Total hari data historis mentah yang terkumpul. Dari jumlah ini, sebagian besar (85%, data paling lama) dipakai untuk melatih model, dan 15% data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² di atas — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.",
   },
 };
 
@@ -59,6 +59,10 @@ async function loadModelInfo() {
 
     document.getElementById("model-pill-text").textContent =
       `${data.algoritma} · R²=${data.r2.toFixed(3)}`;
+
+    if (METRIC_INFO.n) {
+      METRIC_INFO.n.desc = `Total hari data historis mentah yang terkumpul (${data.jumlah_data} hari). Dari jumlah ini, ${data.jumlah_data - data.jumlah_data_uji} hari data paling lama dipakai untuk melatih model, dan ${data.jumlah_data_uji} hari data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.`;
+    }
   } catch (err) {
     document.getElementById("model-pill-text").textContent = "Gagal memuat status model";
     console.error("loadModelInfo error:", err);
@@ -320,14 +324,10 @@ function updateGauge(prediksi, elevasiHariIni, status) {
   badgeEl.className = `status-badge status-${status}`;
 }
 
-function updateConfidence(stdDevPohon) {
+function updateConfidence() {
   const el = document.getElementById("gauge-confidence");
-  if (stdDevPohon === undefined || stdDevPohon === null) { el.textContent = ""; return; }
-  let label;
-  if (stdDevPohon < 0.05) label = "Tinggi";
-  else if (stdDevPohon < 0.15) label = "Sedang";
-  else label = "Rendah";
-  el.textContent = `Tingkat keyakinan model: ${label} (σ pohon = ${stdDevPohon.toFixed(3)} m)`;
+  if (typeof _modelMetrics.rmse !== "number") { el.textContent = ""; return; }
+  el.textContent = `Estimasi margin error tipikal: ± ${_modelMetrics.rmse.toFixed(3)} m (dari evaluasi data uji)`;
 }
 
 function currentThresholds() {
@@ -368,7 +368,7 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
     }
 
     updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
-    updateConfidence(data.std_dev_pohon);
+    updateConfidence();
 
     tambahRiwayat({
       waktu: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
@@ -418,8 +418,14 @@ async function loadFeatureImportance() {
       row.className = "importance-row";
       const pct = (item.importance / maxImportance) * 100;
       const pctLabel = (item.importance * 100).toFixed(1) + "%";
+      const arah = item.koefisien >= 0 ? "naik" : "turun";
+      const arahSimbol = item.koefisien >= 0 ? "▲" : "▼";
+      const arahKelas = item.koefisien >= 0 ? "naik" : "turun";
       row.innerHTML = `
-        <span class="fitur-name">${item.fitur}</span>
+        <span class="fitur-name">
+          ${item.fitur}
+          <span class="fitur-arah fitur-arah-${arahKelas}" title="Nilai fitur ini naik -> prediksi elevasi besok cenderung ${arah}">${arahSimbol}</span>
+        </span>
         <span class="importance-bar-track"><span class="importance-bar-fill" style="width:${pct}%"></span></span>
         <span class="pct">${pctLabel}</span>
       `;

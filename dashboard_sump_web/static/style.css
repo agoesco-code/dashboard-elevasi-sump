@@ -1124,3 +1124,10 @@ a { color: var(--cyan); }
   .sidebar-footer span:last-child { display: none; }
   .sidebar-footer { justify-content: center; }
 }
+
+/* ======================================================================
+   ARAH KOEFISIEN — panel Variabel Berpengaruh (khas interpretasi Linear Regression)
+   ====================================================================== */
+.fitur-arah { display: inline-block; margin-left: 6px; font-size: 11px; }
+.fitur-arah-naik { color: var(--red); }
+.fitur-arah-turun { color: var(--cyan); }
