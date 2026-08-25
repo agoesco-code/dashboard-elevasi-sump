@@ -2,29 +2,35 @@
 Backend API — Dashboard Prediksi Elevasi Muka Air Sump
 =========================================================
 
-Menyediakan 4 endpoint yang dipakai oleh static/script.js:
+Menyediakan endpoint yang dipakai oleh static/script.js:
   GET  /api/model-info          -> metrik performa model (RMSE, MAE, R², dsb)
   GET  /api/historical          -> data historis untuk grafik tren
-  POST /api/predict             -> prediksi elevasi besok
+  GET  /api/akumulasi-context   -> curah hujan terakhir (live-preview akumulasi)
+  GET  /api/constants           -> nilai konstanta lapangan
   GET  /api/feature-importance  -> kontribusi tiap fitur ke prediksi
+  POST /api/predict             -> prediksi elevasi besok
 
-PERUBAHAN UTAMA dari versi sebelumnya:
-  - "Debit Air Limpasan" TIDAK diinput manual lagi. Dihitung otomatis dari
-    Curah Hujan, Durasi Hujan, Koefisien Limpasan (C), dan Luas Catchment
-    Area, memakai METODE RASIONAL: Q = C x I x A / 3.6
-    (I = intensitas hujan = curah_hujan / durasi_hujan, dalam mm/jam;
-     A dalam km²; Q dalam m³/detik). Dicocokkan ke data historis Anda,
-     akurasinya >99.9%.
-  - "Volume Sump" TIDAK diinput manual lagi. Dihitung otomatis dari Elevasi
-    Muka Air Sump hari ini, memakai regresi kuadratik yang di-fit dari
-    545 data historis Anda (R² = 0.9998) — karena Volume Sump ternyata
-    murni fungsi dari elevasinya (bentuk cekungan sump).
-  - "Akumulasi 3/5/7 Hari" dijadikan opsional/lanjutan. Kalau tidak diisi
-    manual, diestimasi otomatis dari Curah Hujan hari ini (curah x 3/5/7)
-    -- estimasi kasar, tapi pengaruh fitur ini ke prediksi sangat kecil
-    (<1.5% gabungan), jadi dampaknya ke akurasi prediksi minimal.
-  - Status AMAN/WASPADA/KRITIS ditambahkan berdasar ambang batas elevasi
-    yang bisa diatur (default kritis di -14 m, sesuai permintaan).
+MODEL: Regresi Linear (Ordinary Least Squares / sklearn LinearRegression)
+  -- model & pipeline persis mengikuti notebook `Eksplorasi_data.ipynb`.
+DATA SUMBER: `data/Data_Final.xlsx` — data MENTAH harian (10 kolom), BELUM
+  direkayasa. Rekayasa fitur (Elevasi Kemarin, Delta Elevasi, Akumulasi
+  3/5/7 Hari, Target Elevasi Besok) dihitung ulang di sini persis seperti
+  di notebook, supaya hasilnya konsisten dengan yang sudah dievaluasi.
+
+PERUBAHAN dari versi Random Forest sebelumnya:
+  - Model diganti total ke Linear Regression (lihat model/model_linear_regression_elevasi_sump.pkl).
+  - "Feature Importance" (feature_importances_, khusus model berbasis pohon)
+    diganti dengan KOEFISIEN TERSTANDARISASI (coef_ x std tiap fitur) —
+    metode yang tepat untuk mengukur & membandingkan kontribusi fitur pada
+    model linear, karena skala satuan tiap fitur berbeda-beda.
+  - "Tingkat keyakinan per-prediksi" (std_dev_pohon, dari sebaran pohon RF)
+    dihapus karena Linear Regression tidak punya ensemble. Sebagai gantinya
+    ditampilkan RMSE data uji sebagai estimasi margin error tipikal (nilai
+    tetap, bukan per-prediksi).
+  - RMSE/MAE/R² dihitung PERSIS seperti notebook: split kronologis 85%
+    data latih / 15% data uji, dievaluasi HANYA pada data uji (bukan
+    seluruh dataset), supaya angkanya sama dengan yang divalidasi di
+    notebook.
 """
 import os
 import joblib
@@ -37,26 +43,47 @@ app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "model", "model_rf_elevasi_sump.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, "model", "model_linear_regression_elevasi_sump.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
-DATA_PATH = os.path.join(BASE_DIR, "data", "dataset_final.xlsx")
+DATA_PATH = os.path.join(BASE_DIR, "data", "Data_Final.xlsx")
 
 model = joblib.load(MODEL_PATH)
 feature_columns = joblib.load(FEATURES_PATH)
 
 # ---------------------------------------------------------------------------
-# Muat data historis sekali saat server start (dipakai untuk grafik & metrik)
+# Muat data historis MENTAH, urutkan kronologis
 # ---------------------------------------------------------------------------
-_df = pd.read_excel(DATA_PATH)
-_df = _df.sort_values("Tanggal").reset_index(drop=True)
+_df_raw = pd.read_excel(DATA_PATH)
+_df_raw["Tanggal"] = pd.to_datetime(_df_raw["Tanggal"])
+_df_raw = _df_raw.sort_values("Tanggal").reset_index(drop=True)
+
+# ---------------------------------------------------------------------------
+# Rekayasa fitur — PERSIS seperti notebook (Bagian 4: Feature Engineering)
+# ---------------------------------------------------------------------------
+_df = _df_raw.copy()
+_df["Elevasi Muka Air Sump Kemarin (m)"] = _df["Elevasi Muka Air Sump (m)"].shift(1)
+_df["Delta Elevasi (m)"] = _df["Elevasi Muka Air Sump (m)"] - _df["Elevasi Muka Air Sump Kemarin (m)"]
+_df["Akumulasi 3 Hari (mm)"] = _df["Curah Hujan (mm)"].rolling(window=3, min_periods=3).sum()
+_df["Akumulasi 5 Hari (mm)"] = _df["Curah Hujan (mm)"].rolling(window=5, min_periods=5).sum()
+_df["Akumulasi 7 Hari (mm)"] = _df["Curah Hujan (mm)"].rolling(window=7, min_periods=7).sum()
+_df["Target_Elevasi_Besok (m)"] = _df["Elevasi Muka Air Sump (m)"].shift(-1)
+
+# Baris yang dipakai model = baris tanpa NaN akibat lag/rolling/target
+# (persis notebook Bagian 4.5)
+_df_model = _df.dropna(subset=[
+    "Elevasi Muka Air Sump Kemarin (m)",
+    "Akumulasi 7 Hari (mm)",
+    "Target_Elevasi_Besok (m)",
+]).reset_index(drop=True)
 
 # --- Fit kurva Volume Sump = f(Elevasi) dari data historis (kuadratik) -----
+# (murni hubungan geometris cekungan sump, dipakai untuk auto-estimasi
+# Volume Sump dari input Elevasi Hari Ini pengguna)
 _vol_coeffs = np.polyfit(
-    _df["Elevasi Muka Air Sump (m)"], _df["Volume Sump (m³)"], deg=2
+    _df_raw["Elevasi Muka Air Sump (m)"], _df_raw["Volume Sump (m³)"], deg=2
 )
 
 def hitung_volume_sump(elevasi_m: float) -> float:
-    """Volume sump (m³) diestimasi dari elevasi, pakai kurva hasil fit data historis."""
     return float(np.polyval(_vol_coeffs, elevasi_m))
 
 
@@ -64,59 +91,53 @@ def hitung_debit_limpasan(curah_hujan, durasi_hujan, koef_c, luas_km2) -> float:
     """Metode Rasional: Q (m³/detik) = C x I x A / 3.6, I = curah/durasi (mm/jam)."""
     if not durasi_hujan or durasi_hujan <= 0:
         return 0.0
-    intensitas = curah_hujan / durasi_hujan  # mm/jam
+    intensitas = curah_hujan / durasi_hujan
     return float(koef_c * intensitas * luas_km2 / 3.6)
 
 
-# --- Curah hujan (n-1) hari terakhir dari data historis, dipakai untuk ------
-# menghitung akumulasi 3/5/7 hari secara REAL (bukan taksiran kasar).
-# Asumsi: "Hari Ini" yang diinput pengguna = hari tepat setelah tanggal
-# terakhir di data historis (pemakaian harian nyata, Excel diupdate tiap hari).
-_curah_hujan_terkini = _df["Curah Hujan (mm)"].tolist()  # urut dari lama -> baru
+# --- Curah hujan historis (urut lama -> baru), dipakai untuk akumulasi -----
+_curah_hujan_terkini = _df_raw["Curah Hujan (mm)"].tolist()
 
 
 def hitung_akumulasi(curah_hujan_hari_ini: float, n_hari: int) -> float:
-    """Akumulasi n hari = curah hujan hari ini + (n-1) hari terakhir dari data historis."""
     n_hari_sebelumnya = _curah_hujan_terkini[-(n_hari - 1):] if n_hari > 1 else []
     return float(curah_hujan_hari_ini + sum(n_hari_sebelumnya))
 
 
-# --- Elevasi hari terakhir di data historis, dipakai sebagai "Elevasi     -----
-# Kemarin" otomatis (asumsi "Hari Ini" yang diinput pengguna = hari tepat
-# setelah tanggal terakhir di data historis, sama seperti asumsi akumulasi hujan)
-_elevasi_kemarin_auto = float(_df["Elevasi Muka Air Sump (m)"].iloc[-1])
+_elevasi_kemarin_auto = float(_df_raw["Elevasi Muka Air Sump (m)"].iloc[-1])
 
-
-# --- Evaluasi performa model (RMSE/MAE/R²) memakai target elevasi besok ----
+# ---------------------------------------------------------------------------
+# Evaluasi performa model — PERSIS metodologi notebook:
+# split kronologis 85% latih / 15% uji, evaluasi HANYA di data uji.
+# ---------------------------------------------------------------------------
 def _evaluasi_model():
-    df = _df.copy()
-    df["target_besok"] = df["Elevasi Muka Air Sump (m)"].shift(-1)
-    df["Delta Elevasi (m)"] = (
-        df["Elevasi Muka Air Sump (m)"] - df["Elevasi Muka Air Sump Kemarin (m)"]
-    )
-    df = df.dropna(subset=["target_besok"])
+    X = _df_model[feature_columns]
+    y = _df_model["Target_Elevasi_Besok (m)"]
 
-    X = df[feature_columns]
-    y_true = df["target_besok"].values
-    y_pred = model.predict(X)
+    split_ratio = 0.85
+    split_index = int(len(_df_model) * split_ratio)
+    X_test, y_test = X.iloc[split_index:], y.iloc[split_index:]
+
+    y_pred = model.predict(X_test)
+    y_true = y_test.values
 
     rmse = float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
     mae = float(np.mean(np.abs(y_true - y_pred)))
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - y_true.mean()) ** 2)
     r2 = float(1 - ss_res / ss_tot)
-    return rmse, mae, r2, len(df)
+    return rmse, mae, r2, len(X_test)
 
 
-_RMSE, _MAE, _R2, _N = _evaluasi_model()
+_RMSE, _MAE, _R2, _N_UJI = _evaluasi_model()
+_N_TOTAL = len(_df_raw)  # total hari data historis mentah yang terkumpul
 
-# --- Ambang batas status (default; sama untuk semua pengguna dashboard) ----
+# --- Ambang batas status ----------------------------------------------------
 DEFAULT_KRITIS = -14.0
 DEFAULT_WASPADA = -15.0
 
 
 def tentukan_status(elevasi: float, batas_waspada=DEFAULT_WASPADA, batas_kritis=DEFAULT_KRITIS) -> str:
-    """Elevasi lebih besar (kurang negatif) = air lebih tinggi = lebih berisiko."""
     if elevasi >= batas_kritis:
         return "kritis"
     if elevasi >= batas_waspada:
@@ -138,19 +159,20 @@ def index():
 @app.route("/api/model-info", methods=["GET"])
 def model_info():
     return jsonify({
-        "algoritma": "Random Forest Regressor",
-        "n_estimators": getattr(model, "n_estimators", None),
+        "algoritma": "Linear Regression (OLS)",
+        "jumlah_fitur": len(feature_columns),
         "rmse": _RMSE,
         "mae": _MAE,
         "r2": _R2,
-        "jumlah_data": _N,
+        "jumlah_data": _N_TOTAL,
+        "jumlah_data_uji": _N_UJI,
     })
 
 
 @app.route("/api/historical", methods=["GET"])
 def historical():
     days = request.args.get("days", default=0, type=int)
-    df = _df if days <= 0 else _df.tail(days)
+    df = _df_raw if days <= 0 else _df_raw.tail(days)
     return jsonify({
         "tanggal": df["Tanggal"].dt.strftime("%Y-%m-%d").tolist(),
         "elevasi": df["Elevasi Muka Air Sump (m)"].round(3).tolist(),
@@ -160,31 +182,43 @@ def historical():
 
 @app.route("/api/akumulasi-context", methods=["GET"])
 def akumulasi_context():
-    """6 hari curah hujan terakhir dari data historis, dipakai frontend untuk
-    live-preview akumulasi 3/5/7 hari sebelum pengguna klik submit."""
     return jsonify({
         "curah_hujan_6_hari_terakhir": _curah_hujan_terkini[-6:],
-        "tanggal_terakhir": _df["Tanggal"].max().strftime("%Y-%m-%d"),
+        "tanggal_terakhir": _df_raw["Tanggal"].max().strftime("%Y-%m-%d"),
     })
 
 
 @app.route("/api/constants", methods=["GET"])
 def constants():
-    """Nilai konstanta lapangan (tidak pernah berubah di data historis),
-    ditampilkan sebagai info di dashboard + nilai default untuk slider sensitivitas."""
     return jsonify({
-        "koefisien_limpasan": float(_df["Koefisien Limpasan ( C )"].iloc[-1]),
-        "luas_catchment_area": float(_df["Luas Catchment Area ( Km² )"].iloc[-1]),
-        "debit_pompa": float(_df["Debit Pompa ( m³/jam )"].iloc[-1]),
+        "koefisien_limpasan": float(_df_raw["Koefisien Limpasan ( C )"].iloc[-1]),
+        "luas_catchment_area": float(_df_raw["Luas Catchment Area ( Km² )"].iloc[-1]),
+        "debit_pompa": float(_df_raw["Debit Pompa ( m³/jam )"].iloc[-1]),
     })
 
 
 @app.route("/api/feature-importance", methods=["GET"])
 def feature_importance():
-    items = [
-        {"fitur": f, "importance": float(imp)}
-        for f, imp in zip(feature_columns, model.feature_importances_)
-    ]
+    """Untuk model linear, 'kepentingan fitur' diukur dari KOEFISIEN
+    TERSTANDARISASI: koefisien_i x std(fitur_i). Ini metode standar untuk
+    membandingkan pengaruh fitur pada regresi linear secara adil, karena
+    tiap fitur skalanya beda-beda (mm vs meter vs m³ vs m³/detik)."""
+    X = _df_model[feature_columns]
+    std_per_fitur = X.std()
+
+    items = []
+    for f, coef in zip(feature_columns, model.coef_):
+        kontribusi_terstandarisasi = float(coef) * float(std_per_fitur[f])
+        items.append({
+            "fitur": f,
+            "koefisien": float(coef),
+            "kontribusi_terstandarisasi": kontribusi_terstandarisasi,
+        })
+
+    total_abs = sum(abs(it["kontribusi_terstandarisasi"]) for it in items) or 1.0
+    for it in items:
+        it["importance"] = abs(it["kontribusi_terstandarisasi"]) / total_abs
+
     items.sort(key=lambda x: x["importance"], reverse=True)
     return jsonify(items)
 
@@ -195,9 +229,6 @@ def predict():
     if not payload:
         return jsonify({"sukses": False, "error": "Body request harus berupa JSON."}), 400
 
-    # --- field wajib diisi manual oleh pengguna ---
-    # "elevasi_kemarin" TIDAK lagi wajib diisi manual -- diambil otomatis dari
-    # data historis (baris terakhir), sama seperti akumulasi hujan.
     wajib = [
         "curah_hujan", "durasi_hujan", "elevasi_hari_ini",
         "koefisien_limpasan", "luas_catchment_area",
@@ -215,8 +246,6 @@ def predict():
     except (TypeError, ValueError):
         return jsonify({"sukses": False, "error": "Semua nilai input harus berupa angka."}), 400
 
-    # Elevasi kemarin: pakai override manual kalau dikirim (jarang), kalau
-    # tidak, pakai nilai otomatis dari data historis.
     elevasi_kemarin_raw = payload.get("elevasi_kemarin")
     elevasi_kemarin = (
         float(elevasi_kemarin_raw) if elevasi_kemarin_raw not in (None, "")
@@ -226,10 +255,6 @@ def predict():
     if not (0.0 <= koef_c <= 1.0):
         return jsonify({"sukses": False, "error": "Koefisien Limpasan (C) harus di antara 0.0 - 1.0."}), 400
 
-    # --- field lanjutan/opsional: akumulasi 3/5/7 hari ---
-    # Kalau tidak dikirim (atau kosong), dihitung otomatis dari data REAL:
-    # curah hujan hari ini + (n-1) hari terakhir di data historis. Kalau
-    # pengguna isi manual, nilai manual itu yang dipakai (override).
     def _get_or_hitung(key, n_hari):
         val = payload.get(key)
         if val in (None, ""):
@@ -240,7 +265,6 @@ def predict():
     akum_5 = _get_or_hitung("akumulasi_5", 5)
     akum_7 = _get_or_hitung("akumulasi_7", 7)
 
-    # --- field yang dihitung otomatis ---
     debit_limpasan = hitung_debit_limpasan(curah_hujan, durasi_hujan, koef_c, luas_a)
     volume_sump = hitung_volume_sump(elevasi_hari_ini)
     delta_elevasi = elevasi_hari_ini - elevasi_kemarin
@@ -266,12 +290,9 @@ def predict():
     X = pd.DataFrame([x_row], columns=feature_columns)
     prediksi = float(model.predict(X)[0])
 
-    # ambang batas status - boleh dikustomisasi lewat request, default -14/-15
     batas_waspada = float(payload.get("batas_waspada", DEFAULT_WASPADA))
     batas_kritis = float(payload.get("batas_kritis", DEFAULT_KRITIS))
     status = tentukan_status(prediksi, batas_waspada, batas_kritis)
-
-    tree_preds = np.array([t.predict(X.values)[0] for t in model.estimators_])
 
     return jsonify({
         "sukses": True,
@@ -285,7 +306,6 @@ def predict():
         "akumulasi_5_terhitung": round(akum_5, 2),
         "akumulasi_7_terhitung": round(akum_7, 2),
         "status": status,
-        "std_dev_pohon": round(float(tree_preds.std()), 4),
     })
 
 

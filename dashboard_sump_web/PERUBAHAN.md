@@ -134,6 +134,33 @@ langsung dari `dataset_final.xlsx`): C = 0.6, Luas = 3.66 km², Debit Pompa =
 - **Debit Pompa** murni ditampilkan sebagai info saja, tidak dijadikan slider,
   karena datanya tidak dipakai di rumus manapun dalam model/dashboard ini.
 
+## Ganti Model: Random Forest → Linear Regression (Round 4)
+
+Model & datanya diganti total sesuai file yang dikirim (`Eksplorasi_data.ipynb`,
+`model_linear_regression_elevasi_sump.pkl`, `feature_columns.pkl`,
+`Data_Final.xlsx`). Semua kode & tampilan yang khusus Random Forest sudah
+dihapus/diganti:
+
+| # | Yang Berubah | Detail |
+|---|---|---|
+| 1 | Model | `model/model_rf_elevasi_sump.pkl` dihapus, diganti `model/model_linear_regression_elevasi_sump.pkl` |
+| 2 | Data sumber | `data/dataset_final.xlsx` (sudah direkayasa) dihapus, diganti `data/Data_Final.xlsx` (data MENTAH). Rekayasa fitur (Elevasi Kemarin, Delta Elevasi, Akumulasi 3/5/7 Hari) sekarang dihitung ulang di `app.py` persis seperti di notebook, supaya konsisten |
+| 3 | RMSE/MAE/R² | Sekarang dihitung PERSIS seperti notebook: split kronologis 85% latih/15% uji, dievaluasi HANYA di data uji (bukan seluruh dataset seperti versi RF sebelumnya). Hasilnya: RMSE=0.6797, MAE=0.3913, R²=0.9266 — sama persis dengan output notebook |
+| 4 | Debit Pompa | Otomatis ikut nilai baru di `Data_Final.xlsx` (655.17 m³/jam), karena diambil langsung dari data, bukan angka tetap |
+| 5 | Feature Importance | `model.feature_importances_` (khusus model pohon) diganti **koefisien terstandarisasi** (`koefisien_i x std(fitur_i)`) — metode yang tepat untuk linear regression karena skala tiap fitur beda-beda. Panel sekarang juga menampilkan simbol ▲/▼ untuk arah pengaruh (naik/turun), yang tidak bisa didapat dari feature importance RF |
+| 6 | Tingkat keyakinan prediksi | `std_dev_pohon` (sebaran pohon Random Forest) dihapus karena Linear Regression tidak punya ensemble. Diganti info RMSE data uji sebagai estimasi margin error tipikal (nilai tetap, ditandai jelas bahwa ini bukan confidence per-prediksi) |
+| 7 | Label & branding | Sidebar "SUMP·RF" diganti "SUMP·LR". Label algoritma di sidebar & drawer sekarang otomatis menampilkan "Linear Regression (OLS)" (diambil langsung dari `/api/model-info`, bukan teks statis) |
+| 8 | Volume Sump (fit kuadratik) | Di-fit ulang dari `Data_Final.xlsx` — hasilnya kebetulan identik dengan sebelumnya (hubungan geometris cekungan sump, bukan soal model), jadi tidak ada perubahan angka |
+
+**Kenapa RMSE/MAE/R² sekarang beda jauh dari sebelumnya (0.39 → 0.68)?**
+Bukan model yang jadi lebih buruk performanya secara nyata — ini soal metodologi
+evaluasi yang sekarang lebih jujur/ketat: versi Random Forest sebelumnya
+dievaluasi di **seluruh dataset** (termasuk data yang sudah dilihat model saat
+training, sehingga terlalu optimis). Versi Linear Regression ini dievaluasi
+**hanya di 15% data terbaru yang belum pernah dilihat model** — sesuai
+metodologi asli di notebook kamu — sehingga angkanya mencerminkan performa
+riil model terhadap data baru.
+
 ## Cara Update ke PythonAnywhere
 
 1. Upload/timpa semua file di atas ke repo GitHub Anda
