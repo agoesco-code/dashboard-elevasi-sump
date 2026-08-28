@@ -107,6 +107,61 @@ def hitung_akumulasi(curah_hujan_hari_ini: float, n_hari: int) -> float:
 _elevasi_kemarin_auto = float(_df_raw["Elevasi Muka Air Sump (m)"].iloc[-1])
 
 # ---------------------------------------------------------------------------
+# Rentang data historis untuk 3 input yang diisi manual pengguna -- dipakai
+# untuk peringatan ekstrapolasi (input di luar rentang ini pernah dilihat
+# model saat training, sehingga akurasi prediksinya tidak terjamin).
+# ---------------------------------------------------------------------------
+_RENTANG_INPUT = {
+    "curah_hujan": {
+        "label": "Curah Hujan",
+        "min": float(_df_raw["Curah Hujan (mm)"].min()),
+        "max": float(_df_raw["Curah Hujan (mm)"].max()),
+        "satuan": "mm",
+    },
+    "durasi_hujan": {
+        "label": "Durasi Hujan",
+        "min": float(_df_raw["Durasi Hujan (jam)"].min()),
+        "max": float(_df_raw["Durasi Hujan (jam)"].max()),
+        "satuan": "jam",
+    },
+    "elevasi_hari_ini": {
+        "label": "Elevasi Hari Ini",
+        "min": float(_df_raw["Elevasi Muka Air Sump (m)"].min()),
+        "max": float(_df_raw["Elevasi Muka Air Sump (m)"].max()),
+        "satuan": "m",
+    },
+}
+
+
+def cek_ekstrapolasi(curah_hujan, durasi_hujan, elevasi_hari_ini):
+    """Kembalikan daftar peringatan untuk input yang di luar rentang data
+    historis (bukan menolak, cuma memberi tahu)."""
+    nilai = {
+        "curah_hujan": curah_hujan,
+        "durasi_hujan": durasi_hujan,
+        "elevasi_hari_ini": elevasi_hari_ini,
+    }
+    peringatan = []
+    for key, v in nilai.items():
+        r = _RENTANG_INPUT[key]
+        if v < r["min"] or v > r["max"]:
+            peringatan.append({
+                "field": key,
+                "label": r["label"],
+                "nilai_input": v,
+                "rentang_min": r["min"],
+                "rentang_max": r["max"],
+                "satuan": r["satuan"],
+                "pesan": (
+                    f"{r['label']} yang Anda masukkan ({v} {r['satuan']}) berada di luar "
+                    f"rentang data historis ({r['min']}–{r['max']} {r['satuan']}). "
+                    f"Model belum pernah 'belajar' dari kondisi seperti ini, sehingga "
+                    f"akurasi prediksi untuk input ini tidak terjamin."
+                ),
+            })
+    return peringatan
+
+# ---------------------------------------------------------------------------
 # Evaluasi performa model — PERSIS metodologi notebook:
 # split kronologis 85% latih / 15% uji, evaluasi HANYA di data uji.
 # ---------------------------------------------------------------------------
@@ -194,7 +249,16 @@ def constants():
         "koefisien_limpasan": float(_df_raw["Koefisien Limpasan ( C )"].iloc[-1]),
         "luas_catchment_area": float(_df_raw["Luas Catchment Area ( Km² )"].iloc[-1]),
         "debit_pompa": float(_df_raw["Debit Pompa ( m³/jam )"].iloc[-1]),
+        "batas_waspada": DEFAULT_WASPADA,
+        "batas_kritis": DEFAULT_KRITIS,
     })
+
+
+@app.route("/api/rentang-input", methods=["GET"])
+def rentang_input():
+    """Rentang data historis untuk 3 input manual -- dipakai frontend untuk
+    menampilkan hint di bawah tiap field form prediksi."""
+    return jsonify(_RENTANG_INPUT)
 
 
 @app.route("/api/feature-importance", methods=["GET"])
@@ -294,6 +358,8 @@ def predict():
     batas_kritis = float(payload.get("batas_kritis", DEFAULT_KRITIS))
     status = tentukan_status(prediksi, batas_waspada, batas_kritis)
 
+    peringatan_ekstrapolasi = cek_ekstrapolasi(curah_hujan, durasi_hujan, elevasi_hari_ini)
+
     return jsonify({
         "sukses": True,
         "prediksi_elevasi_besok": round(prediksi, 3),
@@ -306,6 +372,7 @@ def predict():
         "akumulasi_5_terhitung": round(akum_5, 2),
         "akumulasi_7_terhitung": round(akum_7, 2),
         "status": status,
+        "peringatan_ekstrapolasi": peringatan_ekstrapolasi,
     })
 
 

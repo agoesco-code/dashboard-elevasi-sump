@@ -161,6 +161,35 @@ training, sehingga terlalu optimis). Versi Linear Regression ini dievaluasi
 metodologi asli di notebook kamu — sehingga angkanya mencerminkan performa
 riil model terhadap data baru.
 
+## Peringatan Ekstrapolasi (Round 5)
+
+Ditambahkan setelah diskusi soal risiko ekstrapolasi (input di luar rentang
+data training). Pendekatan yang dipakai: **peringatan (soft warning), bukan
+penolakan (hard block)** — supaya dashboard tetap bisa dipakai memberi
+estimasi saat kondisi ekstrem nyata terjadi di lapangan (justru saat paling
+dibutuhkan), sambil tetap jujur soal keterbatasan akurasinya.
+
+| Perubahan | Detail |
+|---|---|
+| Hint rentang di form | Di bawah 3 input manual (Curah Hujan, Durasi Hujan, Elevasi Hari Ini) sekarang muncul teks kecil "Rentang data historis: min – maks", diambil otomatis dari data (`/api/rentang-input`) |
+| Banner peringatan | Kalau salah satu input di luar rentang data historis, muncul banner kuning di panel hasil prediksi menjelaskan field mana yang di luar rentang & kenapa akurasinya tidak terjamin — prediksi tetap ditampilkan seperti biasa (tidak diblokir) |
+| Endpoint baru | `GET /api/rentang-input` — kirim rentang min/maks 3 variabel dari data historis. `POST /api/predict` sekarang juga mengembalikan field `peringatan_ekstrapolasi` (list, kosong kalau semua input dalam rentang) |
+
+Rentang aktual dari `Data_Final.xlsx`: Curah Hujan 0–113 mm, Durasi Hujan
+0–24 jam, Elevasi Hari Ini -25.6 – -14.0 m.
+
+## Penyempurnaan Form & Perbaikan Bug (Round 6)
+
+| # | Perubahan | Detail |
+|---|---|---|
+| 1 | Nilai default form | Curah Hujan, Durasi Hujan, dan Elevasi Hari Ini sekarang mulai dari **0** (bukan 15 / 2.5 / -15.3), supaya pengguna mengisi sendiri sesuai kondisi aktual, bukan sekadar contoh angka bawaan |
+| 2 | Ambang batas status | "Atur ambang batas status" (dulu bisa diedit manual) diganti jadi **info read-only** "Ambang Batas Status" — Batas Waspada -15 m & Batas Kritis -14 m ditampilkan sebagai fakta tetap (sesuai data aktual & hasil pelatihan model), tidak bisa diubah bebas oleh pengguna |
+| 3 | Bug lama diperbaiki | Panel hasil prediksi sempat "bocor" tampil sebagian (tangki kosong + pesan kosong bertumpuk) sebelum pengguna klik submit, karena aturan CSS `.gauge-result{display:flex}` menimpa atribut `hidden` bawaan HTML. Sudah diperbaiki dengan aturan `[hidden]{display:none}` |
+
+**Verifikasi sebelum rilis**: diuji dengan Playwright (browser otomatis) mengunjungi
+seluruh 7 halaman dashboard, submit form prediksi, dan memeriksa console browser
+untuk error JavaScript — hasilnya bersih, tidak ada error nyata.
+
 ## Cara Update ke PythonAnywhere
 
 1. Upload/timpa semua file di atas ke repo GitHub Anda
