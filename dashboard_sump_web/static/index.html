@@ -186,13 +186,16 @@
             <form id="predict-form" class="predict-form">
               <div class="form-grid">
                 <label>Curah Hujan (mm)
-                  <input type="number" step="0.1" name="curah_hujan" required value="15" />
+                  <input type="number" step="0.1" name="curah_hujan" required value="0" />
+                  <span class="range-hint" id="hint-curah_hujan"></span>
                 </label>
                 <label>Durasi Hujan (jam)
-                  <input type="number" step="0.1" name="durasi_hujan" required value="2.5" />
+                  <input type="number" step="0.1" name="durasi_hujan" required value="0" />
+                  <span class="range-hint" id="hint-durasi_hujan"></span>
                 </label>
                 <label>Elevasi Hari Ini (m)
-                  <input type="number" step="0.01" name="elevasi_hari_ini" required value="-15.3" />
+                  <input type="number" step="0.01" name="elevasi_hari_ini" required value="0" />
+                  <span class="range-hint" id="hint-elevasi_hari_ini"></span>
                 </label>
               </div>
               <p class="field-note" id="elevasi-kemarin-note">Elevasi kemarin diambil otomatis dari data historis terakhir — tidak perlu diisi manual.</p>
@@ -286,21 +289,24 @@
 
               <div class="gauge-delta" id="gauge-delta"></div>
               <div class="gauge-confidence" id="gauge-confidence"></div>
+              <div class="ekstrapolasi-warning" id="ekstrapolasi-warning" hidden></div>
 
               <div class="status-badge" id="status-badge"></div>
 
-              <details class="thresholds-block">
-                <summary>Atur ambang batas status</summary>
-                <div class="form-grid">
-                  <label>Batas Waspada (m)
-                    <input type="number" step="0.1" id="batas-waspada" value="-15">
-                  </label>
-                  <label>Batas Kritis (m)
-                    <input type="number" step="0.1" id="batas-kritis" value="-14">
-                  </label>
+              <div class="thresholds-info">
+                <p class="thresholds-info-title">Ambang Batas Status</p>
+                <p class="thresholds-info-desc">Ditetapkan berdasarkan rentang data aktual & hasil pelatihan model — bukan nilai yang bisa diubah bebas.</p>
+                <div class="constants-grid">
+                  <div class="constant-item">
+                    <span class="constant-label">Batas Waspada</span>
+                    <span class="constant-value" id="info-batas-waspada">–</span>
+                  </div>
+                  <div class="constant-item">
+                    <span class="constant-label">Batas Kritis</span>
+                    <span class="constant-value" id="info-batas-kritis">–</span>
+                  </div>
                 </div>
-                <p class="advanced-desc">Default kritis di -14 m sesuai batas yang ditentukan. Sesuaikan kalau ada SOP berbeda di lapangan.</p>
-              </details>
+              </div>
             </div>
           </section>
         </div>

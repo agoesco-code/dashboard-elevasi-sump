@@ -209,6 +209,8 @@ async function loadConstants() {
     document.getElementById("const-c").textContent = data.koefisien_limpasan.toFixed(2);
     document.getElementById("const-luas").textContent = `${data.luas_catchment_area} km²`;
     document.getElementById("const-pompa").textContent = `${data.debit_pompa} m³/jam`;
+    document.getElementById("info-batas-waspada").textContent = `${data.batas_waspada} m`;
+    document.getElementById("info-batas-kritis").textContent = `${data.batas_kritis} m`;
 
     // Set nilai default slider/field sensitivitas mengikuti konstanta lapangan asli
     const cSlider = document.getElementById("c-slider");
@@ -221,6 +223,43 @@ async function loadConstants() {
   } catch (err) {
     console.error("loadConstants error:", err);
   }
+}
+
+// ------------------------------------------------------------------------
+// BAGIAN 3b: Rentang data historis -- hint di bawah input + cek ekstrapolasi
+// ------------------------------------------------------------------------
+let _rentangInput = {};
+
+async function loadRentangInput() {
+  try {
+    const res = await fetch(`${API_BASE}/api/rentang-input`);
+    _rentangInput = await res.json();
+
+    Object.entries(_rentangInput).forEach(([field, r]) => {
+      const hintEl = document.getElementById(`hint-${field}`);
+      if (hintEl) hintEl.textContent = `Rentang data historis: ${r.min} – ${r.max} ${r.satuan}`;
+    });
+  } catch (err) {
+    console.error("loadRentangInput error:", err);
+  }
+}
+
+function tampilkanPeringatanEkstrapolasi(peringatanList) {
+  const el = document.getElementById("ekstrapolasi-warning");
+  if (!peringatanList || peringatanList.length === 0) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  el.hidden = false;
+  const itemsHtml = peringatanList.map((p) => `<li>${p.pesan}</li>`).join("");
+  el.innerHTML = `
+    <div class="ew-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17.5" x2="12" y2="17.6"/></svg>
+      <span>Input di luar rentang data historis</span>
+    </div>
+    <ul>${itemsHtml}</ul>
+  `;
 }
 
 function previewVolumeSump(elevasi) {
@@ -330,13 +369,6 @@ function updateConfidence() {
   el.textContent = `Estimasi margin error tipikal: ± ${_modelMetrics.rmse.toFixed(3)} m (dari evaluasi data uji)`;
 }
 
-function currentThresholds() {
-  return {
-    batas_waspada: parseFloat(document.getElementById("batas-waspada").value),
-    batas_kritis: parseFloat(document.getElementById("batas-kritis").value),
-  };
-}
-
 document.getElementById("predict-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -345,7 +377,6 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
-  Object.assign(payload, currentThresholds());
 
   const submitBtn = form.querySelector(".btn-predict");
   const spinnerEl = submitBtn.querySelector(".btn-spinner");
@@ -369,6 +400,7 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
     updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
     updateConfidence();
+    tampilkanPeringatanEkstrapolasi(data.peringatan_ekstrapolasi);
 
     tambahRiwayat({
       waktu: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
@@ -384,20 +416,6 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
     spinnerEl.hidden = true;
     labelEl.textContent = "Prediksi Elevasi Besok";
   }
-});
-
-["batas-waspada", "batas-kritis"].forEach((id) => {
-  document.getElementById(id).addEventListener("change", () => {
-    if (document.getElementById("gauge-result").hidden) return;
-    const prediksi = parseFloat(document.getElementById("gauge-value").textContent);
-    const { batas_waspada, batas_kritis } = currentThresholds();
-    let status = "aman";
-    if (prediksi >= batas_kritis) status = "kritis";
-    else if (prediksi >= batas_waspada) status = "waspada";
-    const badgeEl = document.getElementById("status-badge");
-    badgeEl.innerHTML = `${STATUS_ICON[status] || ""}<span>${STATUS_LABEL[status]}</span>`;
-    badgeEl.className = `status-badge status-${status}`;
-  });
 });
 
 // ------------------------------------------------------------------------
@@ -696,5 +714,6 @@ loadModelInfo();
 loadHistoricalChart();
 loadFeatureImportance();
 loadConstants();
+loadRentangInput();
 updateComputedPreview();
 renderRiwayat();

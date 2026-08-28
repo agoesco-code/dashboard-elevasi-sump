@@ -522,6 +522,8 @@ a { color: var(--cyan); }
   gap: 14px;
   width: 100%;
 }
+.gauge-result[hidden] { display: none; }
+.gauge-empty[hidden] { display: none; }
 
 .gauge-label {
   font-size: 12px;
@@ -1131,3 +1133,67 @@ a { color: var(--cyan); }
 .fitur-arah { display: inline-block; margin-left: 6px; font-size: 11px; }
 .fitur-arah-naik { color: var(--red); }
 .fitur-arah-turun { color: var(--cyan); }
+
+/* ======================================================================
+   RENTANG DATA HISTORIS — hint di bawah input & banner peringatan ekstrapolasi
+   ====================================================================== */
+.range-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  margin-top: 4px;
+  font-weight: 400;
+}
+.range-hint.hint-warn { color: var(--amber); }
+
+.ekstrapolasi-warning {
+  background: rgba(217, 142, 61, 0.1);
+  border: 1px solid rgba(217, 142, 61, 0.4);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 4px 0;
+}
+.ekstrapolasi-warning .ew-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--amber);
+  margin-bottom: 6px;
+}
+.ekstrapolasi-warning .ew-title svg { width: 15px; height: 15px; flex-shrink: 0; }
+.ekstrapolasi-warning ul { margin: 0; padding-left: 18px; }
+.ekstrapolasi-warning li {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+.ekstrapolasi-warning li:last-child { margin-bottom: 0; }
+
+/* ======================================================================
+   AMBANG BATAS STATUS — info read-only (bukan input manual)
+   ====================================================================== */
+.thresholds-info {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+.thresholds-info-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+.thresholds-info-desc {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.thresholds-info .constants-grid { grid-template-columns: 1fr 1fr; }
