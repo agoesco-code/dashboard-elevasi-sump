@@ -200,3 +200,87 @@ untuk error JavaScript — hasilnya bersih, tidak ada error nyata.
    ```
 3. Buka tab **Web** di PythonAnywhere, klik tombol **Reload**
 4. Buka `prediksisump.pythonanywhere.com`, hard refresh (Ctrl+Shift+R)
+
+## Ganti Model & Data + Fitur Baru (Round 7)
+
+Diperbarui sesuai data terbaru (`Data_Final.xlsx`, 577 baris, 9 kolom) dan
+notebook final (`Linear_Regression_Sump.ipynb`). Model dilatih ulang persis
+mengikuti metodologi notebook tersebut (`retrain_model.py` disertakan di
+folder ini sebagai referensi/dapat dijalankan ulang kapan saja data
+diperbarui).
+
+| # | Permintaan | Yang Dilakukan |
+|---|---|---|
+| 1 | Hapus satuan "meter" pada RMSE/MAE/R² | Label unit di 3 kartu metrik (+ pada panel detail slide-over & teks margin error) dihapus — sekarang hanya angka polos |
+| 2 | Pindahkan Peta Lokasi ke bawah Ringkasan Model | Urutan sidebar sekarang: **Ringkasan Model → Peta Lokasi** → Tren Historis → Prediksi → Variabel Berpengaruh → Riwayat → Profil |
+| 3 | Tombol ON/OFF prediksi berdasarkan debit pompa | Ditambahkan saklar **"Simulasi Status Pompa"** di form prediksi. Lihat penjelasan detail di bawah — kedua skenario (ON & OFF) selalu dihitung sekaligus dan ditampilkan berdampingan di panel hasil |
+| 4 | Koefisien Limpasan (C) berubah jadi 0.9 | Otomatis mengikuti nilai terbaru di `Data_Final.xlsx` (dibaca langsung dari data, tidak di-hardcode) — slider "Parameter Sensitivitas" ikut default ke 0.90 |
+| 5 | Hapus Volume Sump | Dihapus total: field form, preview otomatis, endpoint, fungsi kalkulasi, dan referensi di frontend/backend. Kolom ini memang sudah tidak ada lagi di `Data_Final.xlsx` versi ini |
+| 6 | Hitung otomatis Intensitas Curah Hujan | Ditambahkan sebagai kartu "dihitung otomatis" berdampingan dengan Debit Air Limpasan — rumus: Curah Hujan ÷ Durasi Hujan (mm/jam), live-update saat input diisi |
+| 7 | Parameter input tidak berubah | Tidak ada field angka baru — 3 input manual (Curah Hujan, Durasi Hujan, Elevasi Hari Ini) dan 2 parameter sensitivitas (C, Luas Catchment) tetap sama. Saklar status pompa adalah toggle ON/OFF, bukan input angka |
+
+### Model: 6 Fitur Final (mengikuti notebook)
+
+Model Linear Regression dilatih ulang dengan fitur PERSIS seperti notebook
+final (bukan 10 fitur seperti versi sebelumnya): Curah Hujan, Durasi Hujan,
+Akumulasi Hujan 3 Hari, Debit Air Limpasan, Elevasi Muka Air Sump (hari
+ini), dan Delta Elevasi. Fitur Akumulasi 5/7 Hari, Elevasi Kemarin (sebagai
+kolom fitur terpisah), dan Volume Sump — yang ada di model versi
+sebelumnya — sudah tidak dipakai lagi.
+
+Split data latih/uji juga diperbarui dari 85:15 menjadi **80:20 kronologis**
+sesuai notebook. Hasil evaluasi pada data uji: **RMSE = 0.4647, MAE =
+0.2961, R² = 0.9489** — identik dengan hasil yang divalidasi di notebook.
+
+### Penjelasan Detail — Simulasi Status Pompa (poin 3)
+
+**Kenapa bukan fitur langsung di model:** `Debit Pompa` bernilai **konstan**
+(655.17 m³/jam) di seluruh 577 baris data historis — pompa selalu menyala
+saat data dikumpulkan. Karena nilainya tidak pernah berubah, model Linear
+Regression secara statistik **tidak bisa mempelajari** seberapa besar
+pengaruh sebenarnya dari menyalakan/mematikan pompa terhadap elevasi (tidak
+ada variasi data untuk dipelajari).
+
+**Solusi yang dipakai — neraca air pada fitur yang sudah ada:** Alih-alih
+menambah fitur baru ke model (yang akan melanggar permintaan poin 7 dan
+juga tidak bisa dilatih ulang tanpa data pompa yang bervariasi), saklar
+ON/OFF ini bekerja dengan mengubah **nilai** fitur "Debit Air Limpasan"
+yang sudah ada di model, berdasarkan neraca air sederhana:
+
+```
+Pompa ON  : Debit Air Limpasan (dipakai model) = Debit Masuk − Debit Pompa (m³/detik)
+Pompa OFF : Debit Air Limpasan (dipakai model) = Debit Masuk saja (tanpa dikurangi)
+```
+
+Debit Masuk dihitung seperti biasa dari Metode Rasional (Q = C × I × A /
+3.6), dan Debit Pompa dikonversi dari m³/jam ke m³/detik (655.17 ÷ 3600 ≈
+0.182 m³/detik).
+
+**Catatan kejujuran yang penting untuk Anda ketahui:** Karena fitur "Debit
+Air Limpasan" ini hanya menyumbang **±2.5% dari total kontribusi model**
+(lihat halaman "Variabel Berpengaruh" — didominasi 84% oleh Elevasi Hari
+Ini), selisih hasil prediksi antara status Pompa ON dan OFF **sangat kecil
+dalam pengujian saya (sekitar 0.01 m)**, dan arah pengaruhnya (naik/turun)
+mengikuti koefisien yang dipelajari model — yang secara statistik cukup
+lemah dan bisa jadi tidak sepenuhnya intuitif secara fisik (misalnya karena
+data curah hujan historis korelasinya sangat lemah terhadap perubahan
+elevasi harian, seperti sudah dibahas di notebook Bagian 3.3).
+
+Jadi: fitur ini **berfungsi dan terhubung nyata ke model** (bukan sekadar
+tombol kosmetik), tapi sebaiknya diperlakukan sebagai **simulasi
+indikatif/edukatif** (menunjukkan konsep neraca air), bukan sebagai angka
+presisi yang bisa diklaim sangat akurat secara kuantitatif ke penguji —
+karena keterbatasan data (debit pompa tidak pernah bervariasi secara
+historis) memang membatasi seberapa jauh pengaruhnya bisa dipelajari model
+manapun. Ini poin yang jujur dan justru bagus untuk didiskusikan di sidang
+sebagai bentuk pemahaman keterbatasan data.
+
+### Verifikasi
+
+Diuji ulang dengan Playwright (klik cover, cek urutan sidebar, cek semua
+kartu metrik tidak ada unit, isi form, submit prediksi, toggle pompa ON/OFF
+dan submit ulang, cek riwayat tercatat, kunjungi semua halaman) — semua
+assertion lulus, tidak ada error JavaScript pada dashboard itu sendiri
+(hanya warning CDN Chart.js yang spesifik ke sandbox pengujian, tidak
+relevan di hosting sungguhan).
+
