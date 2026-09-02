@@ -4,7 +4,7 @@
    API. Dibagi jadi beberapa bagian sesuai section/halaman:
      1. Metrik performa model + slide-over drawer detail
      2. Grafik historis (Chart.js)
-     3. Live preview Debit Limpasan & Volume Sump + Konstanta Lapangan
+     3. Live preview Intensitas Hujan & Debit Limpasan + Konstanta Lapangan
      4. Form prediksi -> tangki dual + status badge + loading spinner
      5. Feature importance
      6. Cover screen
@@ -24,23 +24,23 @@ let historicalChart = null;
 const METRIC_INFO = {
   rmse: {
     title: "RMSE",
-    unit: "meter",
-    desc: "Root Mean Squared Error — rata-rata besar kesalahan prediksi dalam satuan meter, dihitung dari akar rata-rata kuadrat selisih antara prediksi dan nilai aktual. Dihitung dari 15% data uji terakhir (data yang tidak dipakai saat melatih model), supaya mencerminkan performa model pada data baru yang belum pernah dilihat.",
+    unit: "",
+    desc: "Root Mean Squared Error — rata-rata besar kesalahan prediksi, dihitung dari akar rata-rata kuadrat selisih antara prediksi dan nilai aktual. Dihitung dari 20% data uji terakhir (data yang tidak dipakai saat melatih model), supaya mencerminkan performa model pada data baru yang belum pernah dilihat.",
   },
   mae: {
     title: "MAE",
-    unit: "meter",
-    desc: "Mean Absolute Error — rata-rata selisih absolut antara prediksi dan nilai aktual, dalam satuan meter. Lebih mudah dibaca sebagai \u201crata-rata meleset berapa meter\u201d dibanding RMSE. Sama seperti RMSE, dihitung dari 15% data uji terakhir.",
+    unit: "",
+    desc: "Mean Absolute Error — rata-rata selisih absolut antara prediksi dan nilai aktual. Lebih mudah dibaca sebagai \u201crata-rata melesetnya\u201d dibanding RMSE. Sama seperti RMSE, dihitung dari 20% data uji terakhir.",
   },
   r2: {
     title: "R² (Koefisien Determinasi)",
     unit: "",
-    desc: "Mengukur seberapa besar variasi elevasi besok yang berhasil dijelaskan oleh model, dalam skala 0 sampai 1. Semakin dekat ke 1, semakin baik model menangkap pola pada data. Dihitung dari 15% data uji terakhir, bukan dari data yang dipakai melatih model.",
+    desc: "Mengukur seberapa besar variasi elevasi besok yang berhasil dijelaskan oleh model, dalam skala 0 sampai 1. Semakin dekat ke 1, semakin baik model menangkap pola pada data. Dihitung dari 20% data uji terakhir, bukan dari data yang dipakai melatih model.",
   },
   n: {
     title: "Jumlah Data Historis",
     unit: "hari",
-    desc: "Total hari data historis mentah yang terkumpul. Dari jumlah ini, sebagian besar (85%, data paling lama) dipakai untuk melatih model, dan 15% data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² di atas — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.",
+    desc: "Total hari data historis mentah yang terkumpul. Dari jumlah ini, sebagian besar (80%, data paling lama) dipakai untuk melatih model, dan 20% data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² di atas — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.",
   },
 };
 
@@ -196,10 +196,10 @@ document.querySelectorAll(".range-btn").forEach((btn) => {
 });
 
 // ------------------------------------------------------------------------
-// BAGIAN 3: Live preview Debit Air Limpasan & Volume Sump + Konstanta
+// BAGIAN 3: Live preview Intensitas Hujan & Debit Air Limpasan + Konstanta
 // (rumus ini CERMIN dari backend app.py -- kalau backend diubah, ubah juga di sini)
 // ------------------------------------------------------------------------
-const VOL_COEFFS = [3114.43399297, 158864.87494434, 2060859.59270043]; // [a, b, c] utk a*x^2+b*x+c
+let _debitPompaKonstan = 0;
 
 async function loadConstants() {
   try {
@@ -211,6 +211,10 @@ async function loadConstants() {
     document.getElementById("const-pompa").textContent = `${data.debit_pompa} m³/jam`;
     document.getElementById("info-batas-waspada").textContent = `${data.batas_waspada} m`;
     document.getElementById("info-batas-kritis").textContent = `${data.batas_kritis} m`;
+
+    _debitPompaKonstan = data.debit_pompa;
+    const pumpConstEl = document.getElementById("pump-const-value");
+    if (pumpConstEl) pumpConstEl.textContent = `${data.debit_pompa} m³/jam`;
 
     // Set nilai default slider/field sensitivitas mengikuti konstanta lapangan asli
     const cSlider = document.getElementById("c-slider");
@@ -262,14 +266,13 @@ function tampilkanPeringatanEkstrapolasi(peringatanList) {
   `;
 }
 
-function previewVolumeSump(elevasi) {
-  const [a, b, c] = VOL_COEFFS;
-  return a * elevasi * elevasi + b * elevasi + c;
+function previewIntensitas(curahHujan, durasiHujan) {
+  if (!durasiHujan || durasiHujan <= 0) return 0;
+  return curahHujan / durasiHujan; // mm/jam
 }
 
 function previewDebitLimpasan(curahHujan, durasiHujan, koefC, luasA) {
-  if (!durasiHujan || durasiHujan <= 0) return 0;
-  const intensitas = curahHujan / durasiHujan; // mm/jam
+  const intensitas = previewIntensitas(curahHujan, durasiHujan);
   return (koefC * intensitas * luasA) / 3.6;
 }
 
@@ -283,15 +286,12 @@ function updateComputedPreview() {
   const durasi = parseFloat(form.durasi_hujan.value) || 0;
   const koefC = parseFloat(form.koefisien_limpasan.value) || 0;
   const luasA = parseFloat(form.luas_catchment_area.value) || 0;
-  const elevasiHariIni = parseFloat(form.elevasi_hari_ini.value);
+
+  const intensitas = previewIntensitas(curah, durasi);
+  document.getElementById("preview-intensitas").textContent = `${formatNumber(intensitas, 3)} mm/jam`;
 
   const debit = previewDebitLimpasan(curah, durasi, koefC, luasA);
   document.getElementById("preview-debit").textContent = `${formatNumber(debit, 4)} m³/detik`;
-
-  if (!isNaN(elevasiHariIni)) {
-    const volume = previewVolumeSump(elevasiHariIni);
-    document.getElementById("preview-volume").textContent = `${formatNumber(volume, 0)} m³`;
-  }
 }
 
 const cSlider = document.getElementById("c-slider");
@@ -303,6 +303,15 @@ cSlider.addEventListener("input", () => {
 
 ["curah_hujan", "durasi_hujan", "luas_catchment_area", "elevasi_hari_ini"].forEach((name) => {
   document.getElementsByName(name)[0].addEventListener("input", updateComputedPreview);
+});
+
+// Toggle status pompa — label teks mengikuti posisi saklar
+const pumpToggle = document.getElementById("pump-toggle");
+const pumpStatusLabel = document.getElementById("pump-status-label");
+pumpToggle?.addEventListener("change", () => {
+  pumpStatusLabel.textContent = pumpToggle.checked
+    ? "Pompa ON (beroperasi normal)"
+    : "Pompa OFF (tidak beroperasi)";
 });
 
 // ------------------------------------------------------------------------
@@ -366,7 +375,21 @@ function updateGauge(prediksi, elevasiHariIni, status) {
 function updateConfidence() {
   const el = document.getElementById("gauge-confidence");
   if (typeof _modelMetrics.rmse !== "number") { el.textContent = ""; return; }
-  el.textContent = `Estimasi margin error tipikal: ± ${_modelMetrics.rmse.toFixed(3)} m (dari evaluasi data uji)`;
+  el.textContent = `Estimasi margin error tipikal: ± ${_modelMetrics.rmse.toFixed(3)} (dari evaluasi data uji)`;
+}
+
+function tampilkanPerbandinganPompa(prediksiOn, prediksiOff, statusPompaAktif) {
+  const el = document.getElementById("pump-comparison");
+  if (!el) return;
+  el.hidden = false;
+
+  const onEl = document.getElementById("pump-on-value");
+  const offEl = document.getElementById("pump-off-value");
+  onEl.textContent = prediksiOn.toFixed(3);
+  offEl.textContent = prediksiOff.toFixed(3);
+
+  onEl.closest(".pump-comparison-row").classList.toggle("pump-active", statusPompaAktif === true);
+  offEl.closest(".pump-comparison-row").classList.toggle("pump-active", statusPompaAktif === false);
 }
 
 document.getElementById("predict-form").addEventListener("submit", async (e) => {
@@ -377,6 +400,8 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
+  // Checkbox tidak ikut FormData saat unchecked -- kirim status eksplisit
+  payload.status_pompa = document.getElementById("pump-toggle").checked;
 
   const submitBtn = form.querySelector(".btn-predict");
   const spinnerEl = submitBtn.querySelector(".btn-spinner");
@@ -400,6 +425,7 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
     updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
     updateConfidence();
+    tampilkanPerbandinganPompa(data.prediksi_pompa_on, data.prediksi_pompa_off, data.status_pompa);
     tampilkanPeringatanEkstrapolasi(data.peringatan_ekstrapolasi);
 
     tambahRiwayat({

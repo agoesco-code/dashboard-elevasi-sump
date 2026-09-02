@@ -345,6 +345,110 @@ a { color: var(--cyan); }
 }
 
 /* ======================================================================
+   SIMULASI STATUS POMPA (ON/OFF)
+   ====================================================================== */
+.pump-toggle-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.pump-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(148, 163, 171, 0.35);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.switch input:checked + .switch-slider {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(20px);
+}
+
+.pump-switch-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.pump-comparison {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+
+.pump-comparison-title {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pump-comparison-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+
+.pump-comparison-row.pump-active {
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+.pump-comparison-label {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 12.5px;
+}
+
+/* ======================================================================
    SENSITIVITAS & NILAI TERHITUNG (baru)
    ====================================================================== */
 .sensitivity-block {

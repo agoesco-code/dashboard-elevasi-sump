@@ -84,6 +84,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg>
         <span>Ringkasan Model</span>
       </button>
+      <button class="nav-item" data-page="peta" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Peta Lokasi</span>
+      </button>
       <button class="nav-item" data-page="tren" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>
         <span>Tren Historis</span>
@@ -95,10 +99,6 @@
       <button class="nav-item" data-page="variabel" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="18" y1="20" x2="18" y2="11"/></svg>
         <span>Variabel Berpengaruh</span>
-      </button>
-      <button class="nav-item" data-page="peta" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-        <span>Peta Lokasi</span>
       </button>
       <button class="nav-item" data-page="riwayat" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
@@ -135,17 +135,14 @@
             <button class="metric-card" data-metric="rmse" type="button">
               <span class="metric-label">RMSE</span>
               <span class="metric-value" id="metric-rmse">–</span>
-              <span class="metric-unit">meter</span>
             </button>
             <button class="metric-card" data-metric="mae" type="button">
               <span class="metric-label">MAE</span>
               <span class="metric-value" id="metric-mae">–</span>
-              <span class="metric-unit">meter</span>
             </button>
             <button class="metric-card" data-metric="r2" type="button">
               <span class="metric-label">R²</span>
               <span class="metric-value" id="metric-r2">–</span>
-              <span class="metric-unit">koefisien determinasi</span>
             </button>
             <button class="metric-card" data-metric="n" type="button">
               <span class="metric-label">Data Historis</span>
@@ -229,8 +226,8 @@
                 <div class="form-grid">
                   <label>
                     Koefisien Limpasan — C
-                    <span class="range-value" id="c-value-label">0.60</span>
-                    <input type="range" min="0" max="1" step="0.05" name="koefisien_limpasan" id="c-slider" value="0.6" />
+                    <span class="range-value" id="c-value-label">0.90</span>
+                    <input type="range" min="0" max="1" step="0.05" name="koefisien_limpasan" id="c-slider" value="0.9" />
                   </label>
                   <label>Luas Catchment Area (km²)
                     <input type="number" step="0.01" min="0" name="luas_catchment_area" id="luas-input" required value="3.66" />
@@ -240,12 +237,31 @@
 
               <div class="computed-block" id="computed-block">
                 <div class="computed-item">
-                  <span class="computed-label">Debit Air Limpasan (dihitung otomatis)</span>
-                  <span class="computed-value" id="preview-debit">– m³/detik</span>
+                  <span class="computed-label">Intensitas Curah Hujan (dihitung otomatis)</span>
+                  <span class="computed-value" id="preview-intensitas">– mm/jam</span>
                 </div>
                 <div class="computed-item">
-                  <span class="computed-label">Volume Sump (dihitung otomatis)</span>
-                  <span class="computed-value" id="preview-volume">– m³</span>
+                  <span class="computed-label">Debit Air Limpasan Masuk (dihitung otomatis)</span>
+                  <span class="computed-value" id="preview-debit">– m³/detik</span>
+                </div>
+              </div>
+
+              <div class="pump-toggle-block">
+                <p class="sensitivity-title">Simulasi Status Pompa</p>
+                <p class="sensitivity-desc">
+                  Debit Pompa bernilai konstan (<span id="pump-const-value">–</span>) di seluruh
+                  data historis — pompa selalu menyala saat data dikumpulkan, sehingga
+                  pengaruhnya tidak bisa dipelajari langsung oleh model. Saklar ini
+                  mensimulasikan neraca air (debit limpasan masuk dikurangi debit pompa
+                  keluar) untuk memperkirakan perbedaan elevasi jika status pompa berubah.
+                  Kedua skenario selalu dihitung sekaligus setiap kali Anda memprediksi.
+                </p>
+                <div class="pump-switch-row">
+                  <label class="switch">
+                    <input type="checkbox" id="pump-toggle" name="status_pompa" checked />
+                    <span class="switch-slider"></span>
+                  </label>
+                  <span class="pump-switch-label" id="pump-status-label">Pompa ON (beroperasi normal)</span>
                 </div>
               </div>
 
@@ -289,6 +305,19 @@
 
               <div class="gauge-delta" id="gauge-delta"></div>
               <div class="gauge-confidence" id="gauge-confidence"></div>
+
+              <div class="pump-comparison" id="pump-comparison" hidden>
+                <p class="pump-comparison-title">Perbandingan Status Pompa</p>
+                <div class="pump-comparison-row">
+                  <span class="pump-comparison-label">Pompa ON</span>
+                  <span class="pump-comparison-value" id="pump-on-value">–</span>
+                </div>
+                <div class="pump-comparison-row">
+                  <span class="pump-comparison-label">Pompa OFF</span>
+                  <span class="pump-comparison-value" id="pump-off-value">–</span>
+                </div>
+              </div>
+
               <div class="ekstrapolasi-warning" id="ekstrapolasi-warning" hidden></div>
 
               <div class="status-badge" id="status-badge"></div>
