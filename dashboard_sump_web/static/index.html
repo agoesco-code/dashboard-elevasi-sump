@@ -190,12 +190,11 @@
                   <input type="number" step="0.1" name="durasi_hujan" required value="0" />
                   <span class="range-hint" id="hint-durasi_hujan"></span>
                 </label>
-                <label>Elevasi Hari Ini (m)
+                <label>Elevasi Muka Air Sump (m)
                   <input type="number" step="0.01" name="elevasi_hari_ini" required value="0" />
                   <span class="range-hint" id="hint-elevasi_hari_ini"></span>
                 </label>
               </div>
-              <p class="field-note" id="elevasi-kemarin-note">Elevasi kemarin diambil otomatis dari data historis terakhir — tidak perlu diisi manual.</p>
 
               <div class="constants-block">
                 <p class="sensitivity-title">Konstanta Lapangan</p>
@@ -248,14 +247,6 @@
 
               <div class="pump-toggle-block">
                 <p class="sensitivity-title">Simulasi Status Pompa</p>
-                <p class="sensitivity-desc">
-                  Debit Pompa bernilai konstan (<span id="pump-const-value">–</span>) di seluruh
-                  data historis — pompa selalu menyala saat data dikumpulkan, sehingga
-                  pengaruhnya tidak bisa dipelajari langsung oleh model. Saklar ini
-                  mensimulasikan neraca air (debit limpasan masuk dikurangi debit pompa
-                  keluar) untuk memperkirakan perbedaan elevasi jika status pompa berubah.
-                  Kedua skenario selalu dihitung sekaligus setiap kali Anda memprediksi.
-                </p>
                 <div class="pump-switch-row">
                   <label class="switch">
                     <input type="checkbox" id="pump-toggle" name="status_pompa" checked />
