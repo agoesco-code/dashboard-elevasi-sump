@@ -96,10 +96,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>
         <span>Prediksi</span>
       </button>
-      <button class="nav-item" data-page="variabel" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="18" y1="20" x2="18" y2="11"/></svg>
-        <span>Variabel Berpengaruh</span>
-      </button>
       <button class="nav-item" data-page="riwayat" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
         <span>Riwayat Prediksi</span>
@@ -144,11 +140,6 @@
               <span class="metric-label">R²</span>
               <span class="metric-value" id="metric-r2">–</span>
             </button>
-            <button class="metric-card" data-metric="n" type="button">
-              <span class="metric-label">Data Historis</span>
-              <span class="metric-value" id="metric-n">–</span>
-              <span class="metric-unit">hari</span>
-            </button>
           </div>
         </section>
       </div>
@@ -184,17 +175,15 @@
               <div class="form-grid">
                 <label>Curah Hujan (mm)
                   <input type="number" step="0.1" name="curah_hujan" required value="0" />
-                  <span class="range-hint" id="hint-curah_hujan"></span>
                 </label>
                 <label>Durasi Hujan (jam)
                   <input type="number" step="0.1" name="durasi_hujan" required value="0" />
-                  <span class="range-hint" id="hint-durasi_hujan"></span>
                 </label>
-                <label>Elevasi Muka Air Sump (m)
+                <label>Elevasi Hari Ini (m)
                   <input type="number" step="0.01" name="elevasi_hari_ini" required value="0" />
-                  <span class="range-hint" id="hint-elevasi_hari_ini"></span>
                 </label>
               </div>
+              <p class="field-note" id="elevasi-kemarin-note">Elevasi kemarin diambil otomatis dari data historis terakhir — tidak perlu diisi manual.</p>
 
               <div class="constants-block">
                 <p class="sensitivity-title">Konstanta Lapangan</p>
@@ -217,11 +206,6 @@
 
               <div class="sensitivity-block">
                 <p class="sensitivity-title">Parameter Sensitivitas Catchment</p>
-                <p class="sensitivity-desc">
-                  Nilainya sama dengan konstanta lapangan di atas secara default — ubah untuk
-                  simulasi "bagaimana jika" (what-if) melihat pengaruh perubahan karakteristik
-                  catchment terhadap debit limpasan &amp; hasil prediksi.
-                </p>
                 <div class="form-grid">
                   <label>
                     Koefisien Limpasan — C
@@ -247,6 +231,14 @@
 
               <div class="pump-toggle-block">
                 <p class="sensitivity-title">Simulasi Status Pompa</p>
+                <p class="sensitivity-desc">
+                  Debit Pompa bernilai konstan (<span id="pump-const-value">–</span>) di seluruh
+                  data historis — pompa selalu menyala saat data dikumpulkan, sehingga
+                  pengaruhnya tidak bisa dipelajari langsung oleh model. Saklar ini
+                  mensimulasikan neraca air (debit limpasan masuk dikurangi debit pompa
+                  keluar) untuk memperkirakan perbedaan elevasi jika status pompa berubah.
+                  Kedua skenario selalu dihitung sekaligus setiap kali Anda memprediksi.
+                </p>
                 <div class="pump-switch-row">
                   <label class="switch">
                     <input type="checkbox" id="pump-toggle" name="status_pompa" checked />
@@ -332,21 +324,12 @@
         </div>
       </div>
 
-      <!-- ============================== PAGE: VARIABEL BERPENGARUH ============================== -->
-      <div class="page" data-page="variabel">
-        <section class="panel importance-panel" aria-labelledby="importance-title">
-          <h2 id="importance-title">Variabel Paling Berpengaruh</h2>
-          <p class="section-desc">Kontribusi tiap variabel terhadap prediksi, diukur dari koefisien regresi linear yang distandarisasi. Panjang batang = besar pengaruh; simbol ▲/▼ menunjukkan arah pengaruhnya (naik/turun) terhadap prediksi elevasi besok.</p>
-          <div id="importance-list" class="importance-list"></div>
-        </section>
-      </div>
-
       <!-- ============================== PAGE: PETA LOKASI ============================== -->
       <div class="page" data-page="peta">
         <section class="panel" aria-labelledby="peta-title">
           <div class="panel-head">
             <div>
-              <h2 id="peta-title">Peta / Denah Lokasi Sump</h2>
+              <h2 id="peta-title">Peta Lokasi Sump Utara</h2>
               <p class="section-desc">Scroll untuk zoom, klik-tahan lalu geser untuk menjelajahi peta.</p>
             </div>
             <div class="map-zoom-controls">
@@ -358,7 +341,7 @@
 
           <div class="map-frame" id="map-frame">
             <div class="map-viewport" id="map-viewport">
-              <img id="map-image" src="peta-sump.jpg" alt="Peta lokasi sump" draggable="false">
+              <img id="map-image" src="peta-sump-utara.jpg" alt="Peta lokasi sump utara" draggable="false">
             </div>
           </div>
 
