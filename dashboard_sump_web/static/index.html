@@ -96,10 +96,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>
         <span>Prediksi</span>
       </button>
-      <button class="nav-item" data-page="variabel" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="18" y1="20" x2="18" y2="11"/></svg>
-        <span>Variabel Berpengaruh</span>
-      </button>
       <button class="nav-item" data-page="riwayat" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
         <span>Riwayat Prediksi</span>
@@ -332,21 +328,12 @@
         </div>
       </div>
 
-      <!-- ============================== PAGE: VARIABEL BERPENGARUH ============================== -->
-      <div class="page" data-page="variabel">
-        <section class="panel importance-panel" aria-labelledby="importance-title">
-          <h2 id="importance-title">Variabel Paling Berpengaruh</h2>
-          <p class="section-desc">Kontribusi tiap variabel terhadap prediksi, diukur dari koefisien regresi linear yang distandarisasi. Panjang batang = besar pengaruh; simbol ▲/▼ menunjukkan arah pengaruhnya (naik/turun) terhadap prediksi elevasi besok.</p>
-          <div id="importance-list" class="importance-list"></div>
-        </section>
-      </div>
-
       <!-- ============================== PAGE: PETA LOKASI ============================== -->
       <div class="page" data-page="peta">
         <section class="panel" aria-labelledby="peta-title">
           <div class="panel-head">
             <div>
-              <h2 id="peta-title">Peta / Denah Lokasi Sump</h2>
+              <h2 id="peta-title">Peta Lokasi Sump Utara</h2>
               <p class="section-desc">Scroll untuk zoom, klik-tahan lalu geser untuk menjelajahi peta.</p>
             </div>
             <div class="map-zoom-controls">
@@ -358,7 +345,7 @@
 
           <div class="map-frame" id="map-frame">
             <div class="map-viewport" id="map-viewport">
-              <img id="map-image" src="peta-sump.jpg" alt="Peta lokasi sump" draggable="false">
+              <img id="map-image" src="peta-sump.jpg" alt="Peta lokasi Sump Utara" draggable="false">
             </div>
           </div>
 

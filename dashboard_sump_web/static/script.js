@@ -6,9 +6,8 @@
      2. Grafik historis (Chart.js)
      3. Live preview Intensitas Hujan & Debit Limpasan + Konstanta Lapangan
      4. Form prediksi -> tangki dual + status badge + loading spinner
-     5. Feature importance
      6. Cover screen
-     7. Sidebar (navigasi 7 halaman)
+     7. Sidebar (navigasi 6 halaman)
      8. Peta lokasi (zoom & pan)
      9. Riwayat prediksi (localStorage)
      10. Animasi latar hujan
@@ -239,10 +238,8 @@ async function loadRentangInput() {
     const res = await fetch(`${API_BASE}/api/rentang-input`);
     _rentangInput = await res.json();
 
-    Object.entries(_rentangInput).forEach(([field, r]) => {
-      const hintEl = document.getElementById(`hint-${field}`);
-      if (hintEl) hintEl.textContent = `Rentang data historis: ${r.min} – ${r.max} ${r.satuan}`;
-    });
+    // Hint teks rentang data historis di bawah input sudah tidak ditampilkan —
+    // _rentangInput tetap dipakai untuk cek ekstrapolasi saat submit form.
   } catch (err) {
     console.error("loadRentangInput error:", err);
   }
@@ -445,42 +442,6 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 });
 
 // ------------------------------------------------------------------------
-// BAGIAN 5: Feature importance
-// ------------------------------------------------------------------------
-async function loadFeatureImportance() {
-  try {
-    const res = await fetch(`${API_BASE}/api/feature-importance`);
-    const data = await res.json();
-
-    const container = document.getElementById("importance-list");
-    container.innerHTML = "";
-
-    const maxImportance = Math.max(...data.map((d) => d.importance));
-
-    data.forEach((item) => {
-      const row = document.createElement("div");
-      row.className = "importance-row";
-      const pct = (item.importance / maxImportance) * 100;
-      const pctLabel = (item.importance * 100).toFixed(1) + "%";
-      const arah = item.koefisien >= 0 ? "naik" : "turun";
-      const arahSimbol = item.koefisien >= 0 ? "▲" : "▼";
-      const arahKelas = item.koefisien >= 0 ? "naik" : "turun";
-      row.innerHTML = `
-        <span class="fitur-name">
-          ${item.fitur}
-          <span class="fitur-arah fitur-arah-${arahKelas}" title="Nilai fitur ini naik -> prediksi elevasi besok cenderung ${arah}">${arahSimbol}</span>
-        </span>
-        <span class="importance-bar-track"><span class="importance-bar-fill" style="width:${pct}%"></span></span>
-        <span class="pct">${pctLabel}</span>
-      `;
-      container.appendChild(row);
-    });
-  } catch (err) {
-    console.error("loadFeatureImportance error:", err);
-  }
-}
-
-// ------------------------------------------------------------------------
 // BAGIAN 6: Cover screen — klik untuk masuk ke dashboard
 // ------------------------------------------------------------------------
 const coverScreen = document.getElementById("cover-screen");
@@ -499,8 +460,7 @@ const PAGE_META = {
   ringkasan: { title: "Ringkasan Performa Model", sub: "Metrik hasil evaluasi model terhadap data historis." },
   tren: { title: "Tren Historis", sub: "Pergerakan elevasi muka air sump dari waktu ke waktu." },
   prediksi: { title: "Prediksi Elevasi Besok", sub: "Masukkan kondisi hari ini untuk memprediksi elevasi besok." },
-  variabel: { title: "Variabel Berpengaruh", sub: "Kontribusi tiap variabel terhadap hasil prediksi model." },
-  peta: { title: "Peta Lokasi Sump", sub: "Denah dan posisi sump di area tambang." },
+  peta: { title: "Peta Lokasi Sump Utara", sub: "Denah dan posisi sump utara di area tambang." },
   riwayat: { title: "Riwayat Prediksi", sub: "Semua prediksi yang pernah dijalankan dari dashboard ini." },
   profil: { title: "Profil", sub: "Identitas pengembang dashboard ini." },
 };
@@ -738,7 +698,6 @@ buatHujan("rain-content", 55);
 // ------------------------------------------------------------------------
 loadModelInfo();
 loadHistoricalChart();
-loadFeatureImportance();
 loadConstants();
 loadRentangInput();
 updateComputedPreview();
