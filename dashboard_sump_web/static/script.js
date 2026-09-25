@@ -55,6 +55,7 @@ async function loadModelInfo() {
     document.getElementById("metric-rmse").textContent = data.rmse.toFixed(4);
     document.getElementById("metric-mae").textContent = data.mae.toFixed(4);
     document.getElementById("metric-r2").textContent = data.r2.toFixed(4);
+    document.getElementById("metric-n").textContent = data.jumlah_data;
 
     document.getElementById("model-pill-text").textContent =
       `${data.algoritma} · R²=${data.r2.toFixed(3)}`;
@@ -238,8 +239,10 @@ async function loadRentangInput() {
     const res = await fetch(`${API_BASE}/api/rentang-input`);
     _rentangInput = await res.json();
 
-    // Catatan: teks "Rentang data historis" sengaja tidak ditampilkan di UI (permintaan revisi).
-    // _rentangInput tetap disimpan karena masih dipakai untuk logika peringatan ekstrapolasi.
+    Object.entries(_rentangInput).forEach(([field, r]) => {
+      const hintEl = document.getElementById(`hint-${field}`);
+      if (hintEl) hintEl.textContent = `Rentang data historis: ${r.min} – ${r.max} ${r.satuan}`;
+    });
   } catch (err) {
     console.error("loadRentangInput error:", err);
   }
@@ -442,6 +445,42 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 });
 
 // ------------------------------------------------------------------------
+// BAGIAN 5: Feature importance
+// ------------------------------------------------------------------------
+async function loadFeatureImportance() {
+  try {
+    const res = await fetch(`${API_BASE}/api/feature-importance`);
+    const data = await res.json();
+
+    const container = document.getElementById("importance-list");
+    container.innerHTML = "";
+
+    const maxImportance = Math.max(...data.map((d) => d.importance));
+
+    data.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "importance-row";
+      const pct = (item.importance / maxImportance) * 100;
+      const pctLabel = (item.importance * 100).toFixed(1) + "%";
+      const arah = item.koefisien >= 0 ? "naik" : "turun";
+      const arahSimbol = item.koefisien >= 0 ? "▲" : "▼";
+      const arahKelas = item.koefisien >= 0 ? "naik" : "turun";
+      row.innerHTML = `
+        <span class="fitur-name">
+          ${item.fitur}
+          <span class="fitur-arah fitur-arah-${arahKelas}" title="Nilai fitur ini naik -> prediksi elevasi besok cenderung ${arah}">${arahSimbol}</span>
+        </span>
+        <span class="importance-bar-track"><span class="importance-bar-fill" style="width:${pct}%"></span></span>
+        <span class="pct">${pctLabel}</span>
+      `;
+      container.appendChild(row);
+    });
+  } catch (err) {
+    console.error("loadFeatureImportance error:", err);
+  }
+}
+
+// ------------------------------------------------------------------------
 // BAGIAN 6: Cover screen — klik untuk masuk ke dashboard
 // ------------------------------------------------------------------------
 const coverScreen = document.getElementById("cover-screen");
@@ -460,7 +499,8 @@ const PAGE_META = {
   ringkasan: { title: "Ringkasan Performa Model", sub: "Metrik hasil evaluasi model terhadap data historis." },
   tren: { title: "Tren Historis", sub: "Pergerakan elevasi muka air sump dari waktu ke waktu." },
   prediksi: { title: "Prediksi Elevasi Besok", sub: "Masukkan kondisi hari ini untuk memprediksi elevasi besok." },
-  peta: { title: "Peta Lokasi Sump Utara", sub: "Denah dan posisi sump utara di area tambang." },
+  variabel: { title: "Variabel Berpengaruh", sub: "Kontribusi tiap variabel terhadap hasil prediksi model." },
+  peta: { title: "Peta Lokasi Sump", sub: "Denah dan posisi sump di area tambang." },
   riwayat: { title: "Riwayat Prediksi", sub: "Semua prediksi yang pernah dijalankan dari dashboard ini." },
   profil: { title: "Profil", sub: "Identitas pengembang dashboard ini." },
 };
@@ -480,12 +520,6 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
       document.getElementById("page-title").textContent = meta.title;
       document.getElementById("page-subtitle").textContent = meta.sub;
     }
-
-    if (target === "peta") {
-      // Recalculate tampilan peta setelah kontainer terlihat (sebelumnya
-      // dimensi frame 0 karena halaman masih display:none saat gambar dimuat).
-      requestAnimationFrame(() => resetTampilanPeta());
-    }
   });
 });
 
@@ -493,7 +527,7 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
 // BAGIAN 8: Peta Lokasi — zoom (scroll) & pan (drag), + ganti gambar opsional
 // ------------------------------------------------------------------------
 const MAP_IMAGE_KEY = "peta_sump_gambar_custom";
-const DEFAULT_MAP_SRC = "peta-sump-utara.jpg";
+const DEFAULT_MAP_SRC = "peta-sump.jpg";
 
 const mapViewport = document.getElementById("map-viewport");
 const mapImage = document.getElementById("map-image");
@@ -704,6 +738,7 @@ buatHujan("rain-content", 55);
 // ------------------------------------------------------------------------
 loadModelInfo();
 loadHistoricalChart();
+loadFeatureImportance();
 loadConstants();
 loadRentangInput();
 updateComputedPreview();
