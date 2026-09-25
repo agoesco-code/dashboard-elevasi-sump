@@ -284,20 +284,3 @@ assertion lulus, tidak ada error JavaScript pada dashboard itu sendiri
 (hanya warning CDN Chart.js yang spesifik ke sandbox pengujian, tidak
 relevan di hosting sungguhan).
 
-
-## Revisi Round 8
-
-Diminta 5 revisi tampilan:
-1. Hapus kartu "Data Historis" dari sidebar Ringkasan Performa Model (sisa RMSE, MAE, R²).
-2. Hapus sidebar/halaman "Variabel Berpengaruh" sepenuhnya (nav item, page section, dan kode JS `loadFeatureImportance`).
-3. Hapus teks "Rentang data historis: ..." di bawah input Curah Hujan, Durasi Hujan, dan Elevasi Muka Air Sump pada form Prediksi.
-4. Ganti gambar peta dengan versi crop area utara (pit + kanal + hutan), file baru `static/peta-sump-utara.jpg`, judul halaman diganti jadi "Peta Lokasi Sump Utara".
-5. Hapus teks deskripsi "Nilainya sama dengan konstanta lapangan di atas secara default..." pada blok "Parameter Sensitivitas Catchment".
-
-### Perbaikan tambahan (ditemukan saat verifikasi)
-- `loadModelInfo()` di script.js masih mereferensikan elemen `#metric-n` yang sudah dihapus pada poin 1, menyebabkan error JS dan sidebar status model menampilkan "Gagal memuat status model". Baris referensi tersebut dihapus.
-- Gambar peta tidak tampil (blank) saat pertama membuka halaman Peta Lokasi, karena `resetTampilanPeta()` dihitung saat halaman masih `display:none` (dimensi frame 0). Ditambahkan pemanggilan ulang `resetTampilanPeta()` saat tab "Peta Lokasi" diklik.
-- File `static/peta-sump.jpg` (peta lama, sudah tidak dipakai) dihapus dari paket agar lebih ringkas.
-
-### Verifikasi
-Dijalankan ulang secara lokal (`python app.py`) dan diuji dengan Playwright: halaman Ringkasan Model, Prediksi, dan Peta Lokasi Sump Utara discreenshot dan dicek — semua revisi tampil sesuai permintaan, tidak ada error JavaScript pada dashboard (kecuali warning CDN Chart.js yang spesifik ke sandbox pengujian tanpa akses internet penuh, tidak relevan di hosting sungguhan/browser biasa).
