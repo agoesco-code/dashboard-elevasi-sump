@@ -4,13 +4,13 @@
    API. Dibagi jadi beberapa bagian sesuai section/halaman:
      1. Metrik performa model + slide-over drawer detail
      2. Grafik historis (Chart.js)
-     3. Live preview Intensitas Hujan & Debit Limpasan + Konstanta Lapangan
+     3. Hitung otomatis: Debit Limpasan, Akumulasi Hujan 3 Hari, Delta Elevasi + Konstanta
      4. Form prediksi -> tangki dual + status badge + loading spinner
+     5. Feature importance
      6. Cover screen
-     7. Sidebar (navigasi 6 halaman)
+     7. Sidebar (navigasi 7 halaman)
      8. Peta lokasi (zoom & pan)
      9. Riwayat prediksi (localStorage)
-     10. Animasi latar hujan
    ======================================================================== */
 
 const API_BASE = ""; // kosong = pakai domain yang sama (Flask menyajikan frontend & API bersamaan)
@@ -39,7 +39,7 @@ const METRIC_INFO = {
   n: {
     title: "Jumlah Data Historis",
     unit: "hari",
-    desc: "Total hari data historis mentah yang terkumpul. Dari jumlah ini, sebagian besar (80%, data paling lama) dipakai untuk melatih model, dan 20% data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² di atas — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.",
+    desc: "Jumlah hari data historis yang dipakai model. 80% data paling lama dipakai untuk melatih model, dan 20% data paling baru disisihkan khusus untuk menguji RMSE/MAE/R².",
   },
 };
 
@@ -60,7 +60,7 @@ async function loadModelInfo() {
       `${data.algoritma} · R²=${data.r2.toFixed(3)}`;
 
     if (METRIC_INFO.n) {
-      METRIC_INFO.n.desc = `Total hari data historis mentah yang terkumpul (${data.jumlah_data} hari). Dari jumlah ini, ${data.jumlah_data - data.jumlah_data_uji} hari data paling lama dipakai untuk melatih model, dan ${data.jumlah_data_uji} hari data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.`;
+      METRIC_INFO.n.desc = `Data historis yang dipakai model berjumlah ${data.jumlah_data} hari (dari ${data.jumlah_data_mentah} hari data harian mentah, dikurangi hari pertama yang belum punya elevasi kemarin dan hari terakhir yang belum punya elevasi besok). Sebanyak ${data.jumlah_data - data.jumlah_data_uji} hari data paling lama dipakai untuk melatih model, dan ${data.jumlah_data_uji} hari data paling baru disisihkan khusus untuk menguji RMSE/MAE/R² — supaya hasil evaluasinya jujur terhadap data yang belum pernah dilihat model.`;
     }
   } catch (err) {
     document.getElementById("model-pill-text").textContent = "Gagal memuat status model";
@@ -132,8 +132,8 @@ async function loadHistoricalChart(days = 0) {
             type: "line",
             label: "Elevasi Sump (m)",
             data: data.elevasi,
-            borderColor: "#5fb8c4",
-            backgroundColor: "rgba(95,184,196,0.08)",
+            borderColor: "#0b7f94",
+            backgroundColor: "rgba(11,127,148,0.10)",
             fill: true,
             tension: 0.25,
             pointRadius: 0,
@@ -144,7 +144,7 @@ async function loadHistoricalChart(days = 0) {
             type: "bar",
             label: "Curah Hujan (mm)",
             data: data.curah_hujan,
-            backgroundColor: "rgba(217,142,61,0.55)",
+            backgroundColor: "rgba(224,138,30,0.6)",
             yAxisID: "yHujan",
             barThickness: 3,
           },
@@ -155,27 +155,27 @@ async function loadHistoricalChart(days = 0) {
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { labels: { color: "#9aa3ab", font: { family: "IBM Plex Mono", size: 11 } } },
+          legend: { labels: { color: "#4a5b69", font: { family: "IBM Plex Mono", size: 11 } } },
           tooltip: {
-            backgroundColor: "#1b2126",
-            borderColor: "#2c343b",
+            backgroundColor: "#ffffff", titleColor: "#14202b", bodyColor: "#34444f",
+            borderColor: "#d5dee4",
             borderWidth: 1,
             titleFont: { family: "IBM Plex Mono", size: 11 },
             bodyFont: { family: "IBM Plex Mono", size: 11 },
           },
         },
         scales: {
-          x: { ticks: { color: "#6b747c", maxTicksLimit: 10, font: { size: 10 } }, grid: { color: "#232a30" } },
+          x: { ticks: { color: "#5d6e7b", maxTicksLimit: 10, font: { size: 10 } }, grid: { color: "#e6edf1" } },
           yElevasi: {
             position: "left",
-            title: { display: true, text: "Elevasi (m)", color: "#9aa3ab", font: { size: 11 } },
-            ticks: { color: "#6b747c", font: { size: 10 } },
-            grid: { color: "#232a30" },
+            title: { display: true, text: "Elevasi (m)", color: "#4a5b69", font: { size: 11 } },
+            ticks: { color: "#5d6e7b", font: { size: 10 } },
+            grid: { color: "#e6edf1" },
           },
           yHujan: {
             position: "right",
-            title: { display: true, text: "Curah Hujan (mm)", color: "#9aa3ab", font: { size: 11 } },
-            ticks: { color: "#6b747c", font: { size: 10 } },
+            title: { display: true, text: "Curah Hujan (mm)", color: "#4a5b69", font: { size: 11 } },
+            ticks: { color: "#5d6e7b", font: { size: 10 } },
             grid: { display: false },
           },
         },
@@ -195,11 +195,9 @@ document.querySelectorAll(".range-btn").forEach((btn) => {
 });
 
 // ------------------------------------------------------------------------
-// BAGIAN 3: Live preview Intensitas Hujan & Debit Air Limpasan + Konstanta
+// BAGIAN 3: Hitung otomatis Debit Limpasan, Akumulasi 3 Hari, Delta Elevasi + Konstanta
 // (rumus ini CERMIN dari backend app.py -- kalau backend diubah, ubah juga di sini)
 // ------------------------------------------------------------------------
-let _debitPompaKonstan = 0;
-
 async function loadConstants() {
   try {
     const res = await fetch(`${API_BASE}/api/constants`);
@@ -207,13 +205,8 @@ async function loadConstants() {
 
     document.getElementById("const-c").textContent = data.koefisien_limpasan.toFixed(2);
     document.getElementById("const-luas").textContent = `${data.luas_catchment_area} km²`;
-    document.getElementById("const-pompa").textContent = `${data.debit_pompa} m³/jam`;
     document.getElementById("info-batas-waspada").textContent = `${data.batas_waspada} m`;
     document.getElementById("info-batas-kritis").textContent = `${data.batas_kritis} m`;
-
-    _debitPompaKonstan = data.debit_pompa;
-    const pumpConstEl = document.getElementById("pump-const-value");
-    if (pumpConstEl) pumpConstEl.textContent = `${data.debit_pompa} m³/jam`;
 
     // Set nilai default slider/field sensitivitas mengikuti konstanta lapangan asli
     const cSlider = document.getElementById("c-slider");
@@ -238,8 +231,10 @@ async function loadRentangInput() {
     const res = await fetch(`${API_BASE}/api/rentang-input`);
     _rentangInput = await res.json();
 
-    // Hint teks rentang data historis di bawah input sudah tidak ditampilkan —
-    // _rentangInput tetap dipakai untuk cek ekstrapolasi saat submit form.
+    Object.entries(_rentangInput).forEach(([field, r]) => {
+      const hintEl = document.getElementById(`hint-${field}`);
+      if (hintEl) hintEl.textContent = `Rentang data historis: ${r.min} – ${r.max} ${r.satuan}`;
+    });
   } catch (err) {
     console.error("loadRentangInput error:", err);
   }
@@ -263,14 +258,23 @@ function tampilkanPeringatanEkstrapolasi(peringatanList) {
   `;
 }
 
-function previewIntensitas(curahHujan, durasiHujan) {
-  if (!durasiHujan || durasiHujan <= 0) return 0;
-  return curahHujan / durasiHujan; // mm/jam
+// Intensitas hujan hanya dipakai internal untuk rumus debit (tidak ditampilkan)
+function previewDebitLimpasan(curahHujan, durasiHujan, koefC, luasA) {
+  const intensitas = durasiHujan > 0 ? curahHujan / durasiHujan : 0; // mm/jam
+  return (koefC * intensitas * luasA) / 3.6;
 }
 
-function previewDebitLimpasan(curahHujan, durasiHujan, koefC, luasA) {
-  const intensitas = previewIntensitas(curahHujan, durasiHujan);
-  return (koefC * intensitas * luasA) / 3.6;
+// Data terakhir dari histori untuk Akumulasi 3 Hari & Delta Elevasi (cermin backend)
+let _konteks = { elevasi_kemarin: null, curah_hujan_2_hari_terakhir: 0 };
+
+async function loadKonteks() {
+  try {
+    const res = await fetch(`${API_BASE}/api/konteks-otomatis`);
+    _konteks = await res.json();
+    updateComputedPreview();
+  } catch (err) {
+    console.error("loadKonteks error:", err);
+  }
 }
 
 function formatNumber(n, decimals = 2) {
@@ -284,11 +288,20 @@ function updateComputedPreview() {
   const koefC = parseFloat(form.koefisien_limpasan.value) || 0;
   const luasA = parseFloat(form.luas_catchment_area.value) || 0;
 
-  const intensitas = previewIntensitas(curah, durasi);
-  document.getElementById("preview-intensitas").textContent = `${formatNumber(intensitas, 3)} mm/jam`;
-
   const debit = previewDebitLimpasan(curah, durasi, koefC, luasA);
-  document.getElementById("preview-debit").textContent = `${formatNumber(debit, 4)} m³/detik`;
+  document.getElementById("preview-debit").textContent = formatNumber(debit, 4);
+
+  const akum = curah + (_konteks.curah_hujan_2_hari_terakhir || 0);
+  document.getElementById("preview-akum").textContent = formatNumber(akum, 1);
+
+  const elevHariIni = parseFloat(form.elevasi_hari_ini.value) || 0;
+  const deltaEl = document.getElementById("preview-delta");
+  if (typeof _konteks.elevasi_kemarin === "number" && elevHariIni !== 0) {
+    const delta = elevHariIni - _konteks.elevasi_kemarin;
+    deltaEl.textContent = (delta > 0 ? "+" : "") + formatNumber(delta, 3);
+  } else {
+    deltaEl.textContent = "–";
+  }
 }
 
 const cSlider = document.getElementById("c-slider");
@@ -300,15 +313,6 @@ cSlider.addEventListener("input", () => {
 
 ["curah_hujan", "durasi_hujan", "luas_catchment_area", "elevasi_hari_ini"].forEach((name) => {
   document.getElementsByName(name)[0].addEventListener("input", updateComputedPreview);
-});
-
-// Toggle status pompa — label teks mengikuti posisi saklar
-const pumpToggle = document.getElementById("pump-toggle");
-const pumpStatusLabel = document.getElementById("pump-status-label");
-pumpToggle?.addEventListener("change", () => {
-  pumpStatusLabel.textContent = pumpToggle.checked
-    ? "Pompa ON (beroperasi normal)"
-    : "Pompa OFF (tidak beroperasi)";
 });
 
 // ------------------------------------------------------------------------
@@ -375,20 +379,6 @@ function updateConfidence() {
   el.textContent = `Estimasi margin error tipikal: ± ${_modelMetrics.rmse.toFixed(3)} (dari evaluasi data uji)`;
 }
 
-function tampilkanPerbandinganPompa(prediksiOn, prediksiOff, statusPompaAktif) {
-  const el = document.getElementById("pump-comparison");
-  if (!el) return;
-  el.hidden = false;
-
-  const onEl = document.getElementById("pump-on-value");
-  const offEl = document.getElementById("pump-off-value");
-  onEl.textContent = prediksiOn.toFixed(3);
-  offEl.textContent = prediksiOff.toFixed(3);
-
-  onEl.closest(".pump-comparison-row").classList.toggle("pump-active", statusPompaAktif === true);
-  offEl.closest(".pump-comparison-row").classList.toggle("pump-active", statusPompaAktif === false);
-}
-
 document.getElementById("predict-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -397,8 +387,6 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
-  // Checkbox tidak ikut FormData saat unchecked -- kirim status eksplisit
-  payload.status_pompa = document.getElementById("pump-toggle").checked;
 
   const submitBtn = form.querySelector(".btn-predict");
   const spinnerEl = submitBtn.querySelector(".btn-spinner");
@@ -422,7 +410,6 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
 
     updateGauge(data.prediksi_elevasi_besok, data.elevasi_hari_ini, data.status);
     updateConfidence();
-    tampilkanPerbandinganPompa(data.prediksi_pompa_on, data.prediksi_pompa_off, data.status_pompa);
     tampilkanPeringatanEkstrapolasi(data.peringatan_ekstrapolasi);
 
     tambahRiwayat({
@@ -440,6 +427,42 @@ document.getElementById("predict-form").addEventListener("submit", async (e) => 
     labelEl.textContent = "Prediksi Elevasi Besok";
   }
 });
+
+// ------------------------------------------------------------------------
+// BAGIAN 5: Feature importance
+// ------------------------------------------------------------------------
+async function loadFeatureImportance() {
+  try {
+    const res = await fetch(`${API_BASE}/api/feature-importance`);
+    const data = await res.json();
+
+    const container = document.getElementById("importance-list");
+    container.innerHTML = "";
+
+    const maxImportance = Math.max(...data.map((d) => d.importance));
+
+    data.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "importance-row";
+      const pct = (item.importance / maxImportance) * 100;
+      const pctLabel = (item.importance * 100).toFixed(1) + "%";
+      const arah = item.koefisien >= 0 ? "naik" : "turun";
+      const arahSimbol = item.koefisien >= 0 ? "▲" : "▼";
+      const arahKelas = item.koefisien >= 0 ? "naik" : "turun";
+      row.innerHTML = `
+        <span class="fitur-name">
+          ${item.fitur}
+          <span class="fitur-arah fitur-arah-${arahKelas}" title="Nilai fitur ini naik -> prediksi elevasi besok cenderung ${arah}">${arahSimbol}</span>
+        </span>
+        <span class="importance-bar-track"><span class="importance-bar-fill" style="width:${pct}%"></span></span>
+        <span class="pct">${pctLabel}</span>
+      `;
+      container.appendChild(row);
+    });
+  } catch (err) {
+    console.error("loadFeatureImportance error:", err);
+  }
+}
 
 // ------------------------------------------------------------------------
 // BAGIAN 6: Cover screen — klik untuk masuk ke dashboard
@@ -460,7 +483,8 @@ const PAGE_META = {
   ringkasan: { title: "Ringkasan Performa Model", sub: "Metrik hasil evaluasi model terhadap data historis." },
   tren: { title: "Tren Historis", sub: "Pergerakan elevasi muka air sump dari waktu ke waktu." },
   prediksi: { title: "Prediksi Elevasi Besok", sub: "Masukkan kondisi hari ini untuk memprediksi elevasi besok." },
-  peta: { title: "Peta Lokasi Sump Utara", sub: "Denah dan posisi sump utara di area tambang." },
+  variabel: { title: "Variabel Berpengaruh", sub: "Kontribusi tiap variabel terhadap hasil prediksi model." },
+  peta: { title: "Peta Lokasi Sump", sub: "Denah dan posisi sump di area tambang." },
   riwayat: { title: "Riwayat Prediksi", sub: "Semua prediksi yang pernah dijalankan dari dashboard ini." },
   profil: { title: "Profil", sub: "Identitas pengembang dashboard ini." },
 };
@@ -474,6 +498,9 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
 
     document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
     document.querySelector(`.page[data-page="${target}"]`).classList.add("active");
+
+    // Peta dihitung ukurannya saat halaman terlihat (saat disembunyikan ukurannya 0)
+    if (target === "peta" && (!mapScale || mapMinScale <= 0)) resetTampilanPeta();
 
     const meta = PAGE_META[target];
     if (meta) {
@@ -668,37 +695,13 @@ document.getElementById("riwayat-clear-btn")?.addEventListener("click", () => {
 });
 
 // ------------------------------------------------------------------------
-// BAGIAN 10: Animasi latar hujan — dipasang di cover & di belakang konten
-// ------------------------------------------------------------------------
-function buatHujan(containerId, jumlah) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  for (let i = 0; i < jumlah; i++) {
-    const drop = document.createElement("span");
-    drop.className = "rain-drop";
-    const left = Math.random() * 100;
-    const duration = 0.7 + Math.random() * 0.9;
-    const delay = Math.random() * 3;
-    const height = 40 + Math.random() * 50;
-    const opacity = 0.4 + Math.random() * 0.5;
-    drop.style.left = `${left}%`;
-    drop.style.height = `${height}px`;
-    drop.style.animationDuration = `${duration}s`;
-    drop.style.animationDelay = `${delay}s`;
-    drop.style.opacity = opacity;
-    container.appendChild(drop);
-  }
-}
-
-buatHujan("rain-cover", 70);
-buatHujan("rain-content", 55);
-
-// ------------------------------------------------------------------------
 // INISIALISASI — jalankan semua saat halaman pertama kali dibuka
 // ------------------------------------------------------------------------
 loadModelInfo();
 loadHistoricalChart();
+loadFeatureImportance();
 loadConstants();
 loadRentangInput();
+loadKonteks();
 updateComputedPreview();
 renderRiwayat();

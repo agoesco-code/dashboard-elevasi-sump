@@ -4,29 +4,31 @@
    (warna safety tambang) untuk elemen utama, cyan untuk data air.
    ====================================================================== */
 :root {
-  --bg: #14181c;
-  --bg-panel: #1b2126;
-  --bg-panel-raised: #212830;
-  --border: #2c343b;
-  --border-soft: #232a30;
-  --text: #eae7e0;
-  --text-dim: #9aa3ab;
-  --text-faint: #6b747c;
+  --bg: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-panel-raised: #f3f7fa;
+  --border: #d9e2e8;
+  --border-soft: #e6edf2;
+  --text: #14202b;
+  --text-dim: #4a5b69;
+  --text-faint: #5d6e7b;
 
-  --amber: #d98e3d;
-  --amber-soft: rgba(217, 142, 61, 0.14);
-  --cyan: #5fb8c4;
-  --cyan-soft: rgba(95, 184, 196, 0.14);
-  --red: #d9695f;
-  --red-soft: rgba(217, 105, 95, 0.14);
-  --green: #7bb88a;
-  --green-soft: rgba(123, 184, 138, 0.14);
+  --amber: #a85404;
+  --amber-fill: #f0a030;
+  --amber-soft: rgba(240, 160, 48, 0.16);
+  --cyan: #0a7488;
+  --cyan-soft: rgba(10, 116, 136, 0.08);
+  --red: #c0392f;
+  --red-soft: rgba(192, 57, 47, 0.10);
+  --green: #187a4b;
+  --green-soft: rgba(24, 122, 75, 0.10);
+  --shadow: 0 1px 2px rgba(20, 32, 43, 0.04), 0 4px 14px rgba(20, 32, 43, 0.05);
 
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
-  --radius: 10px;
+  --radius: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -63,7 +65,7 @@ a { color: var(--cyan); }
    ====================================================================== */
 .site-header {
   position: relative;
-  background: linear-gradient(180deg, #1a2024 0%, #14181c 100%);
+  background: linear-gradient(180deg, #f3f7fa 0%, #ffffff 100%);
   border-bottom: 1px solid var(--border);
   overflow: hidden;
 }
@@ -125,7 +127,7 @@ a { color: var(--cyan); }
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 0 3px rgba(123,184,138,0.18);
+  box-shadow: 0 0 0 3px rgba(24,122,75,0.18);
 }
 
 .contour-bg {
@@ -157,6 +159,7 @@ a { color: var(--cyan); }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
+  box-shadow: var(--shadow);
 }
 
 .panel h2 {
@@ -321,7 +324,7 @@ a { color: var(--cyan); }
 .btn-predict {
   margin-top: 20px;
   width: 100%;
-  background: var(--amber);
+  background: var(--amber-fill);
   color: #1a1206;
   border: none;
   font-family: var(--font-display);
@@ -345,110 +348,6 @@ a { color: var(--cyan); }
 }
 
 /* ======================================================================
-   SIMULASI STATUS POMPA (ON/OFF)
-   ====================================================================== */
-.pump-toggle-block {
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px dashed var(--border-soft);
-}
-
-.pump-switch-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 6px;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 46px;
-  height: 26px;
-  flex-shrink: 0;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.switch-slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background: rgba(148, 163, 171, 0.35);
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  transition: background 0.2s ease;
-}
-
-.switch-slider::before {
-  content: "";
-  position: absolute;
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  top: 3px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-}
-
-.switch input:checked + .switch-slider {
-  background: var(--cyan);
-  border-color: var(--cyan);
-}
-
-.switch input:checked + .switch-slider::before {
-  transform: translateX(20px);
-}
-
-.pump-switch-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.pump-comparison {
-  margin-top: 14px;
-  padding: 12px 14px;
-  background: var(--bg-panel-raised);
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-}
-
-.pump-comparison-title {
-  margin: 0 0 8px;
-  font-size: 11.5px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.pump-comparison-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 0;
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  color: var(--text-dim);
-}
-
-.pump-comparison-row.pump-active {
-  color: var(--cyan);
-  font-weight: 600;
-}
-
-.pump-comparison-label {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 12.5px;
-}
-
-/* ======================================================================
    SENSITIVITAS & NILAI TERHITUNG (baru)
    ====================================================================== */
 .sensitivity-block {
@@ -469,37 +368,27 @@ a { color: var(--cyan); }
   margin: 0 0 14px;
   font-size: 12.5px;
   color: var(--text-dim);
-  max-width: 60ch;
 }
 
-.computed-block {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
+.computed-block { margin-top: 20px; padding-top: 18px; border-top: 1px dashed var(--border); }
+.computed-title { margin: 0 0 12px; font-family: var(--font-display); font-size: 13.5px; font-weight: 600; color: var(--text); }
+.computed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .computed-item {
   background: var(--cyan-soft);
-  border: 1px solid rgba(95, 184, 196, 0.3);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border: 1px solid rgba(10, 116, 136, 0.22);
+  border-radius: 10px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
 }
-
-.computed-label {
-  font-size: 11.5px;
-  color: var(--text-dim);
-}
-
-.computed-value {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--cyan);
-}
+.computed-icon { width: 30px; height: 30px; border-radius: 8px; background: #fff; border: 1px solid rgba(10,116,136,0.22); color: var(--cyan); display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+.computed-icon svg { width: 17px; height: 17px; }
+.computed-label { font-size: 12px; font-weight: 500; color: var(--text-dim); }
+.computed-value { font-family: var(--font-mono); font-size: 19px; font-weight: 600; color: var(--cyan); overflow-wrap: anywhere; }
+.computed-value small { font-size: 11.5px; font-weight: 500; color: var(--text-faint); }
+.computed-note { font-size: 11px; color: var(--text-faint); line-height: 1.4; }
 
 /* ======================================================================
    BLOK LANJUTAN / COLLAPSIBLE (baru)
@@ -607,13 +496,15 @@ a { color: var(--cyan); }
    ====================================================================== */
 .gauge-panel {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   text-align: center;
 }
+.gauge-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px 0 18px; }
+.gauge-empty { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.ghost-tank { width: 150px; height: auto; opacity: 0.8; }
 
 .gauge-empty p {
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-size: 13.5px;
   max-width: 28ch;
   margin: 0 auto;
@@ -689,8 +580,8 @@ a { color: var(--cyan); }
   border: 1px solid var(--border-soft);
 }
 
-.gauge-delta.up { color: var(--red); border-color: rgba(217,105,95,0.35); }
-.gauge-delta.down { color: var(--cyan); border-color: rgba(95,184,196,0.35); }
+.gauge-delta.up { color: var(--red); border-color: rgba(192,57,47,0.35); }
+.gauge-delta.down { color: var(--cyan); border-color: rgba(10,116,136,0.35); }
 .gauge-delta.flat { color: var(--text-dim); }
 
 /* ======================================================================
@@ -709,25 +600,25 @@ a { color: var(--cyan); }
 .status-badge.status-aman {
   background: var(--green-soft);
   color: var(--green);
-  border-color: rgba(123,184,138,0.35);
+  border-color: rgba(24,122,75,0.35);
 }
 
 .status-badge.status-waspada {
   background: var(--amber-soft);
   color: var(--amber);
-  border-color: rgba(217,142,61,0.4);
+  border-color: rgba(168,84,4,0.4);
 }
 
 .status-badge.status-kritis {
   background: var(--red-soft);
   color: var(--red);
-  border-color: rgba(217,105,95,0.4);
+  border-color: rgba(192,57,47,0.4);
   animation: pulse-kritis 1.6s ease-in-out infinite;
 }
 
 @keyframes pulse-kritis {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(217,105,95,0.35); }
-  50% { box-shadow: 0 0 0 6px rgba(217,105,95,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,47,0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(192,57,47,0); }
 }
 
 .thresholds-block {
@@ -798,41 +689,8 @@ a { color: var(--cyan); }
   .two-col { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .form-grid { grid-template-columns: 1fr; }
-  .computed-block { grid-template-columns: 1fr; }
+  .computed-grid { grid-template-columns: 1fr; }
   .importance-row { grid-template-columns: 120px 1fr 48px; font-size: 12px; }
-}
-
-/* ======================================================================
-   RAIN BACKGROUND — pengganti blob, gerimis jatuh (dipakai di cover & konten)
-   ====================================================================== */
-.rain-layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-.cover-screen .rain-layer { position: fixed; }
-
-.rain-drop {
-  position: absolute;
-  top: -8%;
-  width: 1.5px;
-  height: 60px;
-  background: linear-gradient(to bottom, rgba(95,184,196,0) 0%, rgba(95,184,196,0.55) 60%, rgba(217,142,61,0.35) 100%);
-  transform: rotate(8deg);
-  animation-name: jatuhHujan;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-@keyframes jatuhHujan {
-  0%   { transform: translateY(-10%) rotate(8deg); opacity: 0; }
-  8%   { opacity: 1; }
-  92%  { opacity: 1; }
-  100% { transform: translateY(112vh) rotate(8deg); opacity: 0; }
 }
 
 /* ======================================================================
@@ -845,7 +703,7 @@ a { color: var(--cyan); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 30% 20%, #1c2731 0%, var(--bg) 55%);
+  background: radial-gradient(circle at 25% 15%, #e3f2f6 0%, #ffffff 58%), #ffffff;
   overflow: hidden;
   transition: opacity 0.5s ease, visibility 0.5s ease;
 }
@@ -863,7 +721,7 @@ a { color: var(--cyan); }
   padding: 0 24px;
 }
 
-.cover-logo { width: 84px; height: 84px; margin-bottom: 26px; filter: drop-shadow(0 8px 24px rgba(95,184,196,0.18)); }
+.cover-logo { width: 84px; height: 84px; margin-bottom: 26px; filter: drop-shadow(0 10px 24px rgba(20,32,43,0.18)); }
 .cover-logo svg { width: 100%; height: 100%; }
 
 .cover-content h1 {
@@ -879,7 +737,7 @@ a { color: var(--cyan); }
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--amber);
+  background: var(--amber-fill);
   color: #1a1206;
   border: none;
   font-family: var(--font-display);
@@ -995,7 +853,7 @@ a { color: var(--cyan); }
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 13, 16, 0.55);
+  background: rgba(20, 32, 43, 0.35);
   backdrop-filter: blur(1px);
   opacity: 0;
   visibility: hidden;
@@ -1012,14 +870,13 @@ a { color: var(--cyan); }
   width: min(400px, 88vw);
   background: var(--bg-panel);
   border-left: 1px solid var(--border);
-  box-shadow: -20px 0 40px rgba(0,0,0,0.35);
-  padding: 60px 32px 32px;
+    padding: 60px 32px 32px;
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 151;
   overflow-y: auto;
 }
-.drawer-panel.open { transform: translateX(0); }
+.drawer-panel.open { transform: translateX(0); box-shadow: -16px 0 36px rgba(20,32,43,0.14); }
 
 .drawer-close {
   position: absolute;
@@ -1056,7 +913,7 @@ a { color: var(--cyan); }
    KONSTANTA LAPANGAN — kartu informasi read-only
    ====================================================================== */
 .constants-block { margin: 18px 0; }
-.constants-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.constants-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
 .constant-item {
   background: var(--bg-panel-raised);
   border: 1px solid var(--border-soft);
@@ -1071,7 +928,7 @@ a { color: var(--cyan); }
 
 .field-note { font-size: 12px; color: var(--text-faint); margin: -6px 0 14px; }
 
-@media (max-width: 640px) { .constants-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .constants-grid { grid-template-columns: 1fr; } .computed-grid { grid-template-columns: 1fr; } }
 
 /* ======================================================================
    TOMBOL PREDIKSI — loading spinner
@@ -1109,7 +966,7 @@ a { color: var(--cyan); }
   margin-top: 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #0d1114;
+  background: #eef3f6;
   height: 560px;
   overflow: hidden;
   position: relative;
@@ -1145,7 +1002,7 @@ a { color: var(--cyan); }
   cursor: pointer;
   border: 1px solid var(--border);
 }
-.btn-upload { background: var(--amber-soft); color: var(--amber); border-color: rgba(217,142,61,0.35); }
+.btn-upload { background: var(--amber-soft); color: var(--amber); border-color: rgba(168,84,4,0.35); }
 .btn-upload:hover { filter: brightness(1.1); }
 .btn-secondary { background: var(--bg-panel-raised); color: var(--text-dim); }
 .btn-secondary:hover { color: var(--text); border-color: var(--text-faint); }
@@ -1252,8 +1109,8 @@ a { color: var(--cyan); }
 .range-hint.hint-warn { color: var(--amber); }
 
 .ekstrapolasi-warning {
-  background: rgba(217, 142, 61, 0.1);
-  border: 1px solid rgba(217, 142, 61, 0.4);
+  background: rgba(168, 84, 4, 0.1);
+  border: 1px solid rgba(168, 84, 4, 0.4);
   border-radius: 8px;
   padding: 12px 14px;
   margin: 4px 0;
@@ -1283,8 +1140,9 @@ a { color: var(--cyan); }
    ====================================================================== */
 .thresholds-info {
   width: 100%;
-  margin-top: 4px;
-  padding-top: 14px;
+  text-align: left;
+  margin-top: auto;
+  padding-top: 16px;
   border-top: 1px solid var(--border-soft);
 }
 .thresholds-info-title {
@@ -1301,3 +1159,61 @@ a { color: var(--cyan); }
   line-height: 1.5;
 }
 .thresholds-info .constants-grid { grid-template-columns: 1fr 1fr; }
+
+/* ======================================================================
+   TATA LETAK HALAMAN PREDIKSI (revisi terang)
+   ====================================================================== */
+.predict-form > .form-grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1180px) { .predict-form > .form-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 860px)  { .predict-form > .form-grid { grid-template-columns: 1fr; } }
+@media (min-width: 861px) { .two-col { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); } }
+.form-grid input { background: #fff; border-color: var(--border); }
+.form-grid input:focus { border-color: var(--amber-fill); outline: none; box-shadow: 0 0 0 3px var(--amber-soft); }
+.nav-item.active { background: var(--amber-soft); color: var(--amber); }
+.metric-card { background: #fff; box-shadow: var(--shadow); }
+.form-grid label { min-width: 0; }
+.form-grid input { width: 100%; min-width: 0; }
+.tank-visual { width: 164px; height: 258px; }
+
+/* ======================================================================
+   MENGISI TINGGI LAYAR — panel tiap halaman memenuhi area konten
+   (tidak ada ruang kosong di bawah panel)
+   ====================================================================== */
+.content-area { display: flex; flex-direction: column; min-height: 100vh; }
+.topbar, .layout { width: 100%; }
+.layout { flex: 1; display: flex; flex-direction: column; }
+.page.active { display: flex; flex-direction: column; flex: 1; }
+.page.active > .panel { flex: 1; }
+
+/* Ringkasan Model: kartu 2x2 besar */
+.metrics-panel { display: flex; flex-direction: column; }
+.metrics-panel .metrics-grid { flex: 1; grid-template-columns: repeat(2, 1fr); grid-auto-rows: minmax(150px, 1fr); }
+.metrics-panel .metric-card { justify-content: center; align-items: flex-start; padding: 24px 30px; gap: 8px; }
+.metrics-panel .metric-label { font-size: 13px; }
+.metrics-panel .metric-value { font-size: clamp(34px, 4.4vw, 54px); }
+.metrics-panel .metric-unit { font-size: 13px; }
+
+/* Tren: grafik melebar mengikuti panel */
+.chart-panel { display: flex; flex-direction: column; }
+.chart-panel .chart-wrap { flex: 1; min-height: 340px; position: relative; }
+
+/* Variabel Berpengaruh: baris tersebar merata */
+.importance-panel { display: flex; flex-direction: column; }
+.importance-panel .importance-list { flex: 1; justify-content: space-evenly; }
+.importance-row { grid-template-columns: 260px 1fr 64px; }
+.importance-bar-track { height: 10px; }
+
+/* Profil ditengahkan; Peta & Prediksi mengikuti isinya */
+.profil-panel { justify-content: center; }
+.page[data-page="prediksi"].active .two-col { flex: none; }
+.page[data-page="peta"].active > .panel { flex: none; }
+.riwayat-empty { text-align: center; padding: 60px 0; }
+@media (max-width: 860px) { .importance-row { grid-template-columns: 120px 1fr 48px; } }
+
+/* Jarak vertikal dirapatkan agar halaman Prediksi muat di layar 1080p */
+.layout { padding: 22px 24px 24px; }
+.topbar { padding-top: 24px; }
+.site-footer { padding: 14px 24px 18px; }
+.page[data-page="peta"].active > .panel { flex: 1; display: flex; flex-direction: column; }
+.page[data-page="peta"] .map-frame { flex: 1; height: auto; min-height: 460px; }
+.metrics-panel .metric-card { justify-content: flex-start; padding-top: clamp(28px, 7vh, 64px); }
