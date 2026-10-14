@@ -1,61 +1,26 @@
 """
 Backend API — Dashboard Prediksi Elevasi Muka Air Sump
 =========================================================
-
-Menyediakan endpoint yang dipakai oleh static/script.js:
-  GET  /api/model-info          -> metrik performa model (RMSE, MAE, R², dsb)
+Endpoint yang dipakai oleh static/script.js:
+  GET  /api/model-info          -> metrik performa model (RMSE, MAE, R², jumlah data)
   GET  /api/historical          -> data historis untuk grafik tren
-  GET  /api/constants           -> nilai konstanta lapangan (C, Luas, Debit Pompa)
-  GET  /api/rentang-input       -> rentang data historis (untuk hint & peringatan ekstrapolasi)
+  GET  /api/constants           -> konstanta lapangan (C, Luas) & ambang batas status
+  GET  /api/rentang-input       -> rentang data historis (hint & peringatan ekstrapolasi)
+  GET  /api/konteks-otomatis    -> data terakhir untuk hitung otomatis Akumulasi 3 Hari & Delta Elevasi
   GET  /api/feature-importance  -> kontribusi tiap fitur ke prediksi
-  POST /api/predict             -> prediksi elevasi besok (skenario pompa ON & OFF)
+  POST /api/predict             -> prediksi elevasi muka air sump besok
 
-MODEL: Regresi Linear (Ordinary Least Squares / sklearn LinearRegression)
-  -- 6 fitur, PERSIS mengikuti notebook final `Linear_Regression_Sump.ipynb`:
-     Curah Hujan, Durasi Hujan, Akumulasi Hujan 3 Hari, Debit Air Limpasan,
-     Elevasi Muka Air Sump (hari ini), Delta Elevasi.
-DATA SUMBER: `data/Data_Final.xlsx` — data MENTAH harian (9 kolom). Rekayasa
-  fitur (Delta Elevasi, Akumulasi Hujan 3 Hari, Target Elevasi Besok)
-  dihitung ulang di sini persis seperti di notebook.
+MODEL: Linear Regression (OLS), 6 fitur persis notebook final:
+  Curah Hujan, Durasi Hujan, Akumulasi Hujan 3 Hari, Debit Air Limpasan,
+  Elevasi Muka Air Sump (hari ini), Delta Elevasi.
+DATA: data/Data_Final.xlsx. "Data historis" yang dipakai model = baris yang
+  punya Elevasi Kemarin & Target Elevasi Besok (577 baris mentah -> 575).
 
-PERUBAHAN pada revisi ini (lihat PERUBAHAN.md untuk detail lengkap):
-  1. Satuan "meter" pada kartu RMSE/MAE/R² dihapus dari tampilan (nilai polos).
-  2. Halaman "Peta Lokasi" dipindah ke urutan kedua sidebar (tepat di bawah
-     "Ringkasan Model").
-  3. [DIREVISI Round 8] Simulasi status pompa ON/OFF SEKARANG memakai NERACA
-     AIR (water balance) EKSPLISIT, BUKAN lagi diumpankan ke model regresi
-     linear. Alasan revisi: pendekatan lama (mengurangi "Debit Air Limpasan"
-     dengan debit pompa lalu memasukkannya ke model) ternyata memberi hasil
-     yang TERBALIK secara fisika -- Pompa ON menghasilkan prediksi elevasi
-     lebih TINGGI daripada Pompa OFF. Penyebabnya: koefisien "Debit Air
-     Limpasan" pada model regresi linear bernilai NEGATIF (artefak
-     multikolinearitas dari data historis, bukan hubungan fisik sungguhan),
-     sehingga nilai fitur yang lebih kecil (saat dikurangi debit pompa)
-     malah mendorong prediksi ke arah yang salah.
-     Perbaikan: volume sump dihitung dari elevasi hari ini (via tabel
-     referensi elevasi<->volume, lihat `data/volume_elevasi_lookup.csv`),
-     lalu neraca air dihitung langsung: Volume_besok = Volume_hari_ini +
-     (Debit_masuk - Debit_keluar_pompa) x 86400 detik, dan hasilnya
-     dikonversi kembali ke elevasi lewat tabel yang sama. Debit_keluar_pompa
-     = Debit Pompa (m3/jam) saat status ON, dan 0 saat status OFF. Dengan
-     ini, Pompa ON DIJAMIN menghasilkan elevasi <= Pompa OFF, sesuai hukum
-     kekekalan massa -- tidak lagi bergantung pada tanda koefisien regresi.
-     Model regresi linear TETAP dipakai untuk metrik RMSE/MAE/R2 di kartu
-     "Ringkasan Model" (representasi performa tervalidasi terhadap data
-     historis) -- neraca air hanya dipakai khusus untuk simulasi
-     interaktif status pompa ON/OFF di panel prediksi.
-  4. Koefisien Limpasan (C) sekarang mengikuti nilai terbaru di data (0.9),
-     dibaca otomatis dari `data/Data_Final.xlsx` (tidak di-hardcode).
-  5. [DIREVISI Round 8] "Volume Sump" DIKEMBALIKAN -- dibutuhkan untuk
-     neraca air di atas. Sumbernya bukan dari `Data_Final.xlsx` (kolom itu
-     memang sudah tidak ada di file itu), melainkan tabel referensi statis
-     `data/volume_elevasi_lookup.csv` (97 titik, elevasi -25 s.d. -14 m,
-     resolusi 0.1 m) yang disusun terpisah dari data harian.
-  6. "Intensitas Curah Hujan" sekarang dihitung otomatis (curah ÷ durasi)
-     dan ditampilkan di dashboard, sama seperti Debit Air Limpasan.
-  7. Parameter input manual TIDAK berubah (tetap Curah Hujan, Durasi Hujan,
-     Elevasi Hari Ini, + parameter sensitivitas C & Luas Catchment Area) --
-     toggle status pompa bukan input angka baru, hanya saklar ON/OFF.
+REVISI TERBARU: semua fitur pompa dihapus (angka Debit Pompa, simulasi ON/OFF,
+  neraca air & tabel volume). Prediksi kembali murni dari model regresi.
+  Intensitas Curah Hujan tidak lagi ditampilkan (tetap dipakai internal untuk
+  menghitung Debit Air Limpasan). Akumulasi Hujan 3 Hari & Delta Elevasi
+  dihitung otomatis dan ditampilkan.
 """
 import os
 import joblib
@@ -71,33 +36,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "model_linear_regression_elevasi_sump.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
 DATA_PATH = os.path.join(BASE_DIR, "data", "Data_Final.xlsx")
-VOLUME_LOOKUP_PATH = os.path.join(BASE_DIR, "data", "volume_elevasi_lookup.csv")
 
 model = joblib.load(MODEL_PATH)
 feature_columns = joblib.load(FEATURES_PATH)
 
-# ---------------------------------------------------------------------------
-# Tabel referensi Elevasi <-> Volume Sump (dipakai KHUSUS untuk neraca air
-# pada simulasi status pompa ON/OFF -- lihat catatan Round 8 di atas).
-# ---------------------------------------------------------------------------
-_vol_table = pd.read_csv(VOLUME_LOOKUP_PATH).sort_values("Elevasi Muka Air Sump (m)")
-_ELEV_REF = _vol_table["Elevasi Muka Air Sump (m)"].to_numpy()
-_VOL_REF = _vol_table["Volume Sump (m³)"].to_numpy()
-_ELEV_MIN, _ELEV_MAX = float(_ELEV_REF.min()), float(_ELEV_REF.max())
-
-
-def elevasi_ke_volume(elevasi: float) -> float:
-    """Interpolasi Volume Sump (m³) dari Elevasi (m) via tabel referensi."""
-    e = float(np.clip(elevasi, _ELEV_MIN, _ELEV_MAX))
-    return float(np.interp(e, _ELEV_REF, _VOL_REF))
-
-
-def volume_ke_elevasi(volume: float) -> float:
-    """Interpolasi Elevasi (m) dari Volume Sump (m³) -- kebalikan fungsi di
-    atas. _VOL_REF sudah naik monoton mengikuti _ELEV_REF sehingga aman
-    dipakai langsung sebagai sumbu x pada np.interp."""
-    v = float(np.clip(volume, _VOL_REF.min(), _VOL_REF.max()))
-    return float(np.interp(v, _VOL_REF, _ELEV_REF))
 # feature_columns diharapkan persis:
 # ["Curah Hujan (mm)", "Durasi Hujan (jam)", "Akumulasi Hujan 3 Hari (mm)",
 #  "Debit Air Limpasan (m³/detik)", "Elevasi Muka Air Sump (m)", "Delta Elevasi (m)"]
@@ -132,8 +74,8 @@ def hitung_intensitas(curah_hujan, durasi_hujan) -> float:
     return float(curah_hujan / durasi_hujan)
 
 
-def hitung_debit_limpasan_masuk(curah_hujan, durasi_hujan, koef_c, luas_km2) -> float:
-    """Debit air limpasan MASUK ke sump (Metode Rasional): Q = C x I x A / 3.6
+def hitung_debit_limpasan(curah_hujan, durasi_hujan, koef_c, luas_km2) -> float:
+    """Debit air limpasan (Metode Rasional): Q = C x I x A / 3.6
     (Q dalam m³/detik, I = intensitas curah hujan dalam mm/jam)."""
     intensitas = hitung_intensitas(curah_hujan, durasi_hujan)
     return float(koef_c * intensitas * luas_km2 / 3.6)
@@ -142,8 +84,6 @@ def hitung_debit_limpasan_masuk(curah_hujan, durasi_hujan, koef_c, luas_km2) -> 
 # --- Konstanta lapangan, dibaca langsung dari data terbaru (tidak di-hardcode) ----
 KOEFISIEN_LIMPASAN_DEFAULT = float(_df_raw["Koefisien Limpasan (C)"].iloc[-1])
 LUAS_CATCHMENT_DEFAULT = float(_df_raw["Luas Catchment Area (Km²)"].iloc[-1])
-DEBIT_POMPA_KONSTAN = float(_df_raw["Debit Pompa (m³/jam)"].iloc[-1])
-DEBIT_POMPA_M3_DETIK = DEBIT_POMPA_KONSTAN / 3600.0  # konversi m³/jam -> m³/detik
 
 _elevasi_kemarin_auto = float(_df_raw["Elevasi Muka Air Sump (m)"].iloc[-1])
 _curah_hujan_terkini = _df_raw["Curah Hujan (mm)"].tolist()
@@ -238,7 +178,8 @@ def _evaluasi_model():
 
 
 _RMSE, _MAE, _R2, _N_UJI = _evaluasi_model()
-_N_TOTAL = len(_df_raw)  # total hari data historis mentah yang terkumpul
+_N_TOTAL = len(_df_model)  # data historis yang dipakai model (mis. 577 mentah -> 575)
+_N_MENTAH = len(_df_raw)
 
 # --- Ambang batas status (read-only, lihat Round 6 di PERUBAHAN.md) --------
 DEFAULT_KRITIS = -14.0
@@ -273,6 +214,7 @@ def model_info():
         "mae": _MAE,
         "r2": _R2,
         "jumlah_data": _N_TOTAL,
+        "jumlah_data_mentah": _N_MENTAH,
         "jumlah_data_uji": _N_UJI,
     })
 
@@ -280,7 +222,7 @@ def model_info():
 @app.route("/api/historical", methods=["GET"])
 def historical():
     days = request.args.get("days", default=0, type=int)
-    df = _df_raw if days <= 0 else _df_raw.tail(days)
+    df = _df_model if days <= 0 else _df_model.tail(days)
     return jsonify({
         "tanggal": df["Tanggal"].dt.strftime("%Y-%m-%d").tolist(),
         "elevasi": df["Elevasi Muka Air Sump (m)"].round(3).tolist(),
@@ -293,7 +235,6 @@ def constants():
     return jsonify({
         "koefisien_limpasan": KOEFISIEN_LIMPASAN_DEFAULT,
         "luas_catchment_area": LUAS_CATCHMENT_DEFAULT,
-        "debit_pompa": DEBIT_POMPA_KONSTAN,
         "batas_waspada": DEFAULT_WASPADA,
         "batas_kritis": DEFAULT_KRITIS,
     })
@@ -304,6 +245,17 @@ def rentang_input():
     """Rentang data historis untuk 3 input manual -- dipakai frontend untuk
     menampilkan hint di bawah tiap field form prediksi."""
     return jsonify(_RENTANG_INPUT)
+
+
+@app.route("/api/konteks-otomatis", methods=["GET"])
+def konteks_otomatis():
+    """Data terakhir dari histori, supaya frontend bisa menampilkan
+    Akumulasi Hujan 3 Hari & Delta Elevasi secara otomatis."""
+    return jsonify({
+        "elevasi_kemarin": _elevasi_kemarin_auto,
+        "curah_hujan_2_hari_terakhir": float(sum(_curah_hujan_terkini[-2:])),
+        "tanggal_data_terakhir": _df_raw["Tanggal"].iloc[-1].strftime("%Y-%m-%d"),
+    })
 
 
 @app.route("/api/feature-importance", methods=["GET"])
@@ -332,50 +284,14 @@ def feature_importance():
     return jsonify(items)
 
 
-def _prediksi_dengan_status_pompa(curah_hujan, durasi_hujan, elevasi_hari_ini,
-                                   koef_c, luas_a, elevasi_kemarin, akum_3,
-                                   pompa_on: bool):
-    """Hitung 1 skenario prediksi (pompa ON atau OFF) via NERACA AIR
-    (water balance) eksplisit -- BUKAN lewat model regresi (lihat catatan
-    Round 8 di docstring modul ini untuk alasan revisi).
-
-    Volume_besok (m3) = Volume_hari_ini + Volume_masuk - Volume_keluar
-      - Volume_masuk  : debit air limpasan (Metode Rasional, m3/detik) x
-                        DURASI HUJAN (bukan 24 jam penuh -- limpasan cuma
-                        terjadi selama hujan berlangsung).
-      - Volume_keluar : Debit Pompa (m3/jam) x 24 JAM (pompa tambang lazim
-                        beroperasi terus-menerus, bukan cuma saat hujan)
-                        saat status ON, dan 0 saat status OFF.
-    Volume_besok lalu dikonversi balik ke elevasi via tabel referensi.
-    Karena murni penjumlahan/pengurangan volume, arah pengaruh pompa
-    DIJAMIN benar secara fisika (ON selalu <= OFF), terlepas dari tanda
-    koefisien regresi manapun.
-    """
-    debit_masuk = hitung_debit_limpasan_masuk(curah_hujan, durasi_hujan, koef_c, luas_a)
-    debit_keluar = DEBIT_POMPA_M3_DETIK if pompa_on else 0.0
-    debit_net = debit_masuk - debit_keluar  # dipertahankan utk kompatibilitas nilai yg ditampilkan
-
-    delta_elevasi = elevasi_hari_ini - elevasi_kemarin
-
-    volume_hari_ini = elevasi_ke_volume(elevasi_hari_ini)
-    volume_masuk = debit_masuk * (durasi_hujan * 3600.0)   # m3/detik -> m3, selama durasi hujan saja
-    volume_keluar = debit_keluar * 86400.0                  # m3/detik -> m3, selama 24 jam
-    volume_besok = volume_hari_ini + volume_masuk - volume_keluar
-    prediksi = volume_ke_elevasi(volume_besok)
-
-    return prediksi, debit_masuk, debit_net, delta_elevasi
-
-
 @app.route("/api/predict", methods=["POST"])
 def predict():
     payload = request.get_json(silent=True)
     if not payload:
         return jsonify({"sukses": False, "error": "Body request harus berupa JSON."}), 400
 
-    wajib = [
-        "curah_hujan", "durasi_hujan", "elevasi_hari_ini",
-        "koefisien_limpasan", "luas_catchment_area",
-    ]
+    wajib = ["curah_hujan", "durasi_hujan", "elevasi_hari_ini",
+             "koefisien_limpasan", "luas_catchment_area"]
     missing = [f for f in wajib if f not in payload or payload[f] in (None, "")]
     if missing:
         return jsonify({"sukses": False, "error": f"Field berikut belum diisi: {missing}"}), 400
@@ -392,55 +308,36 @@ def predict():
     if not (0.0 <= koef_c <= 1.0):
         return jsonify({"sukses": False, "error": "Koefisien Limpasan (C) harus di antara 0.0 - 1.0."}), 400
 
-    elevasi_kemarin_raw = payload.get("elevasi_kemarin")
-    elevasi_kemarin = (
-        float(elevasi_kemarin_raw) if elevasi_kemarin_raw not in (None, "")
-        else _elevasi_kemarin_auto
-    )
-
-    # status_pompa: status yang DIPAKAI sebagai prediksi utama (tangki, status
-    # badge, riwayat). Kedua skenario (ON & OFF) tetap dihitung sekaligus di
-    # bawah supaya dashboard bisa menampilkan perbandingan langsung.
-    status_pompa_raw = payload.get("status_pompa", True)
-    status_pompa = bool(status_pompa_raw) and status_pompa_raw not in (False, "false", "off", "0", 0)
-
-    intensitas = hitung_intensitas(curah_hujan, durasi_hujan)
+    # Fitur otomatis: Debit Air Limpasan, Akumulasi 3 Hari, Delta Elevasi
+    debit_limpasan = hitung_debit_limpasan(curah_hujan, durasi_hujan, koef_c, luas_a)
     akum_3 = hitung_akumulasi_3_hari(curah_hujan)
+    delta_elevasi = elevasi_hari_ini - _elevasi_kemarin_auto
 
-    prediksi_on, debit_masuk, debit_net_on, delta_elevasi = _prediksi_dengan_status_pompa(
-        curah_hujan, durasi_hujan, elevasi_hari_ini, koef_c, luas_a,
-        elevasi_kemarin, akum_3, pompa_on=True,
-    )
-    prediksi_off, _, debit_net_off, _ = _prediksi_dengan_status_pompa(
-        curah_hujan, durasi_hujan, elevasi_hari_ini, koef_c, luas_a,
-        elevasi_kemarin, akum_3, pompa_on=False,
-    )
+    nilai_fitur = {
+        "Curah Hujan (mm)": curah_hujan,
+        "Durasi Hujan (jam)": durasi_hujan,
+        "Akumulasi Hujan 3 Hari (mm)": akum_3,
+        "Debit Air Limpasan (m³/detik)": debit_limpasan,
+        "Elevasi Muka Air Sump (m)": elevasi_hari_ini,
+        "Delta Elevasi (m)": delta_elevasi,
+    }
+    try:
+        X = pd.DataFrame([[nilai_fitur[f] for f in feature_columns]], columns=feature_columns)
+    except KeyError as e:
+        return jsonify({"sukses": False, "error": f"Kolom fitur model tidak dikenali: {e}"}), 500
 
-    prediksi_utama = prediksi_on if status_pompa else prediksi_off
-    debit_net_utama = debit_net_on if status_pompa else debit_net_off
-
-    batas_waspada = float(payload.get("batas_waspada", DEFAULT_WASPADA))
-    batas_kritis = float(payload.get("batas_kritis", DEFAULT_KRITIS))
-    status = tentukan_status(prediksi_utama, batas_waspada, batas_kritis)
-
-    peringatan_ekstrapolasi = cek_ekstrapolasi(curah_hujan, durasi_hujan, elevasi_hari_ini)
+    prediksi = float(model.predict(X)[0])
+    status = tentukan_status(prediksi)
 
     return jsonify({
         "sukses": True,
-        "status_pompa": status_pompa,
-        "prediksi_elevasi_besok": round(prediksi_utama, 3),
-        "prediksi_pompa_on": round(prediksi_on, 3),
-        "prediksi_pompa_off": round(prediksi_off, 3),
+        "prediksi_elevasi_besok": round(prediksi, 3),
         "elevasi_hari_ini": round(elevasi_hari_ini, 3),
-        "elevasi_kemarin_terhitung": round(elevasi_kemarin, 3),
-        "delta_elevasi_input": round(delta_elevasi, 3),
-        "intensitas_curah_hujan_terhitung": round(intensitas, 4),
-        "debit_air_limpasan_masuk_terhitung": round(debit_masuk, 4),
-        "debit_air_limpasan_bersih_terhitung": round(debit_net_utama, 4),
+        "debit_air_limpasan_terhitung": round(debit_limpasan, 4),
         "akumulasi_3_terhitung": round(akum_3, 2),
-        "debit_pompa_konstan": DEBIT_POMPA_KONSTAN,
+        "delta_elevasi_terhitung": round(delta_elevasi, 3),
         "status": status,
-        "peringatan_ekstrapolasi": peringatan_ekstrapolasi,
+        "peringatan_ekstrapolasi": cek_ekstrapolasi(curah_hujan, durasi_hujan, elevasi_hari_ini),
     })
 
 

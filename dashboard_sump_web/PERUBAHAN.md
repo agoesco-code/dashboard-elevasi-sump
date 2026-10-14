@@ -3,6 +3,28 @@
 File ini menjelaskan apa yang berubah dari versi dashboard Anda sebelumnya
 (yang sudah online di PythonAnywhere), supaya mudah dibandingkan.
 
+## Revisi Terbaru (Round 9) — Tema Putih & Hapus Fitur Pompa
+
+| # | Permintaan | Yang Dilakukan |
+|---|---|---|
+| 1 | Background putih, hapus hujan bergerak | Seluruh tema (cover, sidebar, panel, grafik, drawer) diganti terang. Animasi hujan dihapus total dari HTML, CSS, dan JS |
+| 2 | Warna lain disesuaikan | Palet baru: putih + teal tua (data/air) + amber (aksi & prediksi). Kontras teks dicek agar terbaca jelas. Logo tidak diubah |
+| 3 | Data historis 577 → 575 | Kartu "Data Historis" kini 575 hari = data yang benar-benar dipakai model (577 baris mentah dikurangi hari pertama yang belum punya elevasi kemarin dan hari terakhir yang belum punya target besok). Dihitung otomatis dari data, bukan angka tetap. Grafik Tren memakai 575 data yang sama. Pembagian 80:20 → 460 latih, 115 uji |
+| 4 | Hapus semua yang berhubungan dengan pompa | Dihapus: Debit Pompa (konstanta & API), saklar simulasi ON/OFF, perbandingan Pompa ON/OFF, neraca air, dan tabel volume. Prediksi **kembali murni dari model regresi linear** (6 fitur). File `data/volume_elevasi_lookup.csv` tidak dipakai lagi dan boleh dihapus |
+| 5 | Hapus Intensitas Curah Hujan otomatis | Kartu & field-nya dihapus dari tampilan dan API. Nilainya tetap dihitung internal hanya sebagai langkah rumus Debit Air Limpasan (Q = C × I × A ÷ 3,6) |
+| 6 | Tambah Akumulasi Hujan 3 Hari & Delta Elevasi | Blok baru "Dihitung Otomatis" berisi 3 kartu berikon: Debit Air Limpasan, Akumulasi Hujan 3 Hari (curah hari ini + 2 hari terakhir di data), Delta Elevasi (elevasi hari ini − elevasi kemarin dari data). Update langsung saat mengetik. Delta tampil "–" sampai elevasi diisi. Endpoint baru: `GET /api/konteks-otomatis` |
+| 7 | Tata letak rapi, tanpa ruang kosong | Panel semua halaman memenuhi tinggi layar. Ringkasan Model jadi kartu 2×2, grafik & daftar variabel melebar, profil ditengahkan. Ambang Batas Status selalu tampil di panel hasil, dan panel hasil punya ilustrasi tangki sebelum prediksi pertama |
+
+**Perbaikan bug lama ikut disertakan:** gambar Peta Lokasi tidak terlihat sampai tombol reset ditekan
+(ukurannya dihitung saat halaman masih tersembunyi) — kini dihitung saat halaman Peta dibuka.
+Bayangan panel geser (drawer) yang bocor di tepi kanan layar juga dibenahi.
+
+**File yang berubah:** `app.py`, `static/index.html`, `static/script.js`, `static/style.css`.
+Folder `model/`, `data/Data_Final.xlsx`, `static/logo.svg`, `static/peta-sump.jpg` tidak berubah.
+
+> Catatan: bagian "Round 7" di bawah yang menjelaskan simulasi pompa, intensitas otomatis, dan
+> Volume Sump sudah **tidak berlaku** — hanya dipertahankan sebagai riwayat.
+
 ## Ringkasan Perubahan
 
 | # | Permintaan | Yang Dilakukan |
